@@ -228,6 +228,16 @@ const settingsBodySchema = z.object({
     minRating: z.number().min(0).max(5).optional(),
     maxRidesBeforeBreak: z.number().int().min(0).optional(),
   }).optional(),
+  district: z.object({
+    enabled: z.boolean().optional(),
+    name: z.string().optional(),
+    centerLat: z.number().optional(),
+    centerLng: z.number().optional(),
+    boundary: z.array(z.object({
+      lat: z.number(),
+      lng: z.number(),
+    })).optional(),
+  }).optional(),
   features: z.object({
     foodDelivery: z.boolean().optional(),
     rideScheduling: z.boolean().optional(),

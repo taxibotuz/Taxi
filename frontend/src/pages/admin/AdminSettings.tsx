@@ -125,16 +125,82 @@ export default function AdminSettings() {
         </div>
       </Section>
 
-      <Section title="Features">
-        <div className="flex flex-wrap gap-4">
-          <Toggle label="Food Delivery" path="features.foodDelivery" />
-          <Toggle label="Ride Scheduling" path="features.rideScheduling" />
-          <Toggle label="Referral System" path="features.referralSystem" />
-          <Toggle label="SOS Button" path="features.sosButton" />
-        </div>
-      </Section>
+       <Section title="Features">
+         <div className="flex flex-wrap gap-4">
+           <Toggle label="Food Delivery" path="features.foodDelivery" />
+           <Toggle label="Ride Scheduling" path="features.rideScheduling" />
+           <Toggle label="Referral System" path="features.referralSystem" />
+           <Toggle label="SOS Button" path="features.sosButton" />
+         </div>
+       </Section>
 
-      <Section title="Maintenance">
+       <Section title="District Boundary">
+         <div className="space-y-3">
+           <div className="flex items-center justify-between">
+             <span className="text-xs text-gray-400">Polygon vertices (click a row to remove)</span>
+             <button
+               onClick={() => {
+                 if (!form?.district?.boundary) return;
+                 const last = form.district.boundary[form.district.boundary.length - 1];
+                 update('district.boundary', [...form.district.boundary, { lat: last.lat + 0.01, lng: last.lng + 0.01 }]);
+               }}
+               className="text-xs bg-primary-500/20 text-primary-400 px-3 py-1 rounded-lg"
+             >
+               + Add Vertex
+             </button>
+           </div>
+           <div className="max-h-60 overflow-y-auto space-y-1">
+             {(form.district?.boundary || []).map((_: any, i: number) => (
+               <div key={i} className="flex items-center gap-2">
+                 <span className="text-[10px] text-gray-500 w-4">{i + 1}</span>
+                 <input
+                   type="number"
+                   step="0.0001"
+                   value={form.district.boundary[i].lat}
+                   onChange={(e) => {
+                     const b = [...(form.district?.boundary || [])];
+                     b[i] = { ...b[i], lat: Number(e.target.value) };
+                     update('district.boundary', b);
+                   }}
+                   className="w-24 bg-white/10 rounded px-2 py-1 text-xs text-white outline-none"
+                   placeholder="lat"
+                 />
+                 <input
+                   type="number"
+                   step="0.0001"
+                   value={form.district.boundary[i].lng}
+                   onChange={(e) => {
+                     const b = [...(form.district?.boundary || [])];
+                     b[i] = { ...b[i], lng: Number(e.target.value) };
+                     update('district.boundary', b);
+                   }}
+                   className="w-24 bg-white/10 rounded px-2 py-1 text-xs text-white outline-none"
+                   placeholder="lng"
+                 />
+                 {(form.district?.boundary || []).length > 3 && (
+                   <button
+                     onClick={() => {
+                       const b = [...(form.district?.boundary || [])];
+                       b.splice(i, 1);
+                       update('district.boundary', b);
+                     }}
+                     className="text-red-400 text-xs hover:text-red-300"
+                   >
+                     ✕
+                   </button>
+                 )}
+               </div>
+             ))}
+           </div>
+           <div className="flex gap-2 text-[10px] text-gray-500">
+             <span>Min 4 vertices required</span>
+             <span>•</span>
+             <span>Vertices: {(form.district?.boundary || []).length}</span>
+           </div>
+         </div>
+       </Section>
+
+       <Section title="Maintenance">
         <Toggle label="Maintenance Mode" path="maintenance.isEnabled" />
         {form.maintenance?.isEnabled && <Input label="Maintenance Message" path="maintenance.message" />}
       </Section>

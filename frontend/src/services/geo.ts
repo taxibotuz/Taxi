@@ -44,5 +44,34 @@ export function getDefaultCenter(): GeoPoint {
 }
 
 export function isInsideDistrict(point: GeoPoint): boolean {
-  return isInsidePolygon(point, districtConfig.boundary as unknown as GeoPoint[]);
+  return isInsidePolygon(point, getBoundary());
+}
+
+let boundaryOverride: GeoPoint[] | null = null;
+
+export function setBoundary(boundary: GeoPoint[]): void {
+  boundaryOverride = boundary;
+}
+
+export function getBoundary(): GeoPoint[] {
+  if (boundaryOverride) return boundaryOverride;
+  return districtConfig.boundary as unknown as GeoPoint[];
+}
+
+export async function loadSettingsBoundary(): Promise<void> {
+  try {
+    const token = localStorage.getItem('taxigo_token');
+    if (!token) return;
+    const res = await fetch('/api/admin/settings', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const boundary = data.data?.settings?.district?.boundary;
+    if (boundary?.length) {
+      setBoundary(boundary as GeoPoint[]);
+    }
+  } catch {
+    // use default boundary
+  }
 }

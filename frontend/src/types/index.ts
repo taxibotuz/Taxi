@@ -183,6 +183,13 @@ export interface Settings {
     walletEnabled: boolean;
     cashEnabled: boolean;
   };
+  district: {
+    enabled: boolean;
+    name: string;
+    centerLat: number;
+    centerLng: number;
+    boundary: Array<{ lat: number; lng: number }>;
+  };
   maintenance: {
     isEnabled: boolean;
     message: string;

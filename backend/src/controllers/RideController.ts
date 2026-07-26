@@ -8,7 +8,6 @@ import { DriverMatchingService } from '../services/DriverMatchingService';
 import { GeoService } from '../services/GeoService';
 import { SocketService } from '../sockets/SocketService';
 import { TelegramBot } from '../bot';
-import { ServiceAreaService } from '../services/ServiceAreaService';
 import { RideStatus, PaymentMethod, OrderType } from '../types';
 import { logger } from '../config/logger';
 
@@ -32,18 +31,6 @@ export class RideController {
         offeredPrice,
         promoCode,
       } = req.body;
-
-      const pickupCheck = await ServiceAreaService.validate(pickupLat, pickupLng);
-      if (!pickupCheck.allowed) {
-        const userLang = (await User.findById(req.user!._id).select('language').lean())?.language || 'uz';
-        return res.status(400).json({ error: ServiceAreaService.errorMessage(userLang) });
-      }
-
-      const destCheck = await ServiceAreaService.validate(destLat, destLng);
-      if (!destCheck.allowed) {
-        const userLang = (await User.findById(req.user!._id).select('language').lean())?.language || 'uz';
-        return res.status(400).json({ error: ServiceAreaService.errorMessage(userLang) });
-      }
 
       const geoPickup = GeoService.validateLocation(pickupLat, pickupLng);
       if (!geoPickup.valid) {

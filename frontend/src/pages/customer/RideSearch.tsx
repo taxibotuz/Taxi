@@ -19,6 +19,9 @@ export default function RideSearch() {
   const [offeredPrice, setOfferedPrice] = useState<number>(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
 
+  const pickupInside = pickup ? isInsideDistrict(pickup) : false;
+  const destInside = destination ? isInsideDistrict(destination) : false;
+
   useEffect(() => {
     if (!pickup || !destination) {
       navigate('/');
@@ -71,12 +74,12 @@ export default function RideSearch() {
   const handleOrderRide = async () => {
     if (!pickup || !destination || !priceEstimate) return;
 
-    if (!isInsideDistrict(pickup)) {
+    if (!pickupInside) {
       toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
       return;
     }
 
-    if (!isInsideDistrict(destination)) {
+    if (!destInside) {
       toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
       return;
     }
@@ -126,15 +129,30 @@ export default function RideSearch() {
           pickup={pickup}
           destination={destination}
           driverLocation={step === 'found' ? driverLocation : null}
+          showDistrict
+          showSatelliteToggle
         />
 
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute top-4 left-4 z-10 flex gap-2">
           <button
             onClick={() => navigate('/')}
             className="w-10 h-10 glass rounded-xl flex items-center justify-center text-white"
           >
             ←
           </button>
+        </div>
+
+        <div className="absolute top-4 right-16 z-10 flex gap-2">
+          {pickup && (
+            <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${pickupInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
+              Pickup {pickupInside ? '✓ Inside' : '✗ Outside'}
+            </span>
+          )}
+          {destination && (
+            <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${destInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
+              Dest {destInside ? '✓ Inside' : '✗ Outside'}
+            </span>
+          )}
         </div>
       </div>
 

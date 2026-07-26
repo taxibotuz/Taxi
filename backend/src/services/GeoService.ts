@@ -1,12 +1,42 @@
 import { config } from '../config';
-import { logger } from '../config/logger';
+import { Settings } from '../models/Settings';
 
 export interface GeoPoint {
   lat: number;
   lng: number;
 }
 
+let cachedBoundary: GeoPoint[] | null = null;
+
 export class GeoService {
+  static async loadBoundary(): Promise<GeoPoint[]> {
+    try {
+      const settings = await Settings.findOne().lean();
+      if (settings?.district?.boundary?.length) {
+        cachedBoundary = settings.district.boundary as GeoPoint[];
+        return cachedBoundary;
+      }
+    } catch {
+      // fall through
+    }
+    cachedBoundary = null;
+    return GeoService.getDefaultBoundary();
+  }
+
+  static async reloadBoundary(): Promise<void> {
+    cachedBoundary = null;
+    await GeoService.loadBoundary();
+  }
+
+  static getBoundary(): GeoPoint[] {
+    if (cachedBoundary) return cachedBoundary;
+    return GeoService.getDefaultBoundary();
+  }
+
+  private static getDefaultBoundary(): GeoPoint[] {
+    return config.district.boundary as unknown as GeoPoint[];
+  }
+
   static isInsidePolygon(point: GeoPoint, polygon: GeoPoint[] | readonly GeoPoint[]): boolean {
     let inside = false;
     const { lat, lng } = point;
@@ -34,10 +64,8 @@ export class GeoService {
       return { valid: false, error: 'Invalid coordinates' };
     }
 
-    const inside = GeoService.isInsidePolygon(
-      { lat, lng },
-      config.district.boundary as unknown as GeoPoint[],
-    );
+    const polygon = GeoService.getBoundary();
+    const inside = GeoService.isInsidePolygon({ lat, lng }, polygon);
 
     if (!inside) {
       return {
@@ -50,10 +78,10 @@ export class GeoService {
   }
 
   static getDistrictConfig() {
-    return config.district as unknown as {
-      name: string;
-      center: { lat: number; lng: number };
-      boundary: GeoPoint[];
+    return {
+      name: config.district.name,
+      center: config.district.center,
+      boundary: GeoService.getBoundary(),
     };
   }
 }

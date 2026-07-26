@@ -16,6 +16,9 @@ export default function CustomerHome() {
   const [destText, setDestText] = useState('');
   const [userLocation, setUserLocation] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
 
+  const pickupInside = pickup ? isInsideDistrict(pickup) : null;
+  const destInside = destination ? isInsideDistrict(destination) : null;
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -41,23 +44,30 @@ export default function CustomerHome() {
 
   const handleMapClick = (lat: number, lng: number) => {
     const point = { lat, lng };
-    if (!isInsideDistrict(point)) {
-      toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
-      return;
-    }
+    const inside = isInsideDistrict(point);
     if (showPickupSearch) {
       setPickup({ lat, lng, address: `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
       setPickupText(`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
       setShowPickupSearch(false);
+      if (!inside) toast.error("Pickup outside To'rtko'l district");
     } else if (showDestSearch || !destination) {
       setDestination({ lat, lng, address: `🏁 ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
       setDestText(`🏁 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
       setShowDestSearch(false);
+      if (!inside) toast.error("Destination outside To'rtko'l district");
     }
   };
 
   const handleOrderRide = () => {
     if (!pickup || !destination) return;
+    if (!isInsideDistrict(pickup)) {
+      toast.error("Pickup location is outside the service area");
+      return;
+    }
+    if (!isInsideDistrict(destination)) {
+      toast.error("Destination is outside the service area");
+      return;
+    }
     navigate('/search');
   };
 
@@ -71,6 +81,8 @@ export default function CustomerHome() {
           pickup={pickup}
           destination={destination}
           onClick={handleMapClick}
+          showDistrict
+          showSatelliteToggle
         />
       </div>
 
@@ -84,7 +96,7 @@ export default function CustomerHome() {
             onClick={() => { setShowPickupSearch(true); setShowDestSearch(false); }}
             className="flex items-center gap-3 bg-white/5 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
           >
-            <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${pickupInside === null ? 'bg-green-500' : pickupInside ? 'bg-green-500' : 'bg-red-500'}`} />
             <input
               type="text"
               placeholder="Pickup location"
@@ -93,13 +105,18 @@ export default function CustomerHome() {
               className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-400"
               readOnly={!showPickupSearch}
             />
+            {pickupInside !== null && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pickupInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
+                {pickupInside ? '✓ Inside' : '✗ Outside'}
+              </span>
+            )}
           </div>
 
           <div
             onClick={() => { setShowDestSearch(true); setShowPickupSearch(false); }}
             className="flex items-center gap-3 bg-white/5 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
           >
-            <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
+            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${destInside === null ? 'bg-red-500' : destInside ? 'bg-green-500' : 'bg-red-500'}`} />
             <input
               type="text"
               placeholder="Where to?"
@@ -108,6 +125,11 @@ export default function CustomerHome() {
               className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-400"
               readOnly={!showDestSearch}
             />
+            {destInside !== null && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${destInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
+                {destInside ? '✓ Inside' : '✗ Outside'}
+              </span>
+            )}
           </div>
         </motion.div>
       </div>

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { motion } from 'framer-motion';
+import { isInsideDistrict, districtConfig, getBoundary } from '../../services/geo';
 
 const defaultIcon = L.divIcon({
   className: 'custom-marker',
@@ -35,6 +36,28 @@ const carIcon = L.divIcon({
   iconAnchor: [14, 14],
 });
 
+function pickupStatusIcon(inside: boolean) {
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
+      <div style="width:16px;height:16px;background:${inside ? '#22c55e' : '#ef4444'};border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>
+    </div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
+function destStatusIcon(inside: boolean) {
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
+      <div style="width:16px;height:16px;background:${inside ? '#22c55e' : '#ef4444'};border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>
+    </div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
 interface MapViewProps {
   center?: [number, number];
   zoom?: number;
@@ -45,18 +68,33 @@ interface MapViewProps {
   markers?: Array<{ lat: number; lng: number; icon?: string; label?: string }>;
   onClick?: (lat: number, lng: number) => void;
   onDrag?: (lat: number, lng: number) => void;
+  showDistrict?: boolean;
+  showSatelliteToggle?: boolean;
 }
 
+const districtPolygon: [number, number][] = getBoundary().map(
+  (p) => [p.lat, p.lng] as [number, number]
+);
+
+const TILE_LAYERS = {
+  standard: {
+    name: 'Standard',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  },
+  satellite: {
+    name: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+  },
+};
+
 function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!onClick) {
-      return;
-    }
-    const handler = (e: L.LeafletMouseEvent) => onClick(e.latlng.lat, e.latlng.lng);
-    map.on('click', handler);
-    return () => { map.off('click', handler); };
-  }, [map, onClick]);
+  useMapEvents({
+    click(e) {
+      if (onClick) onClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
   return null;
 }
 
@@ -66,7 +104,7 @@ function MapCenterUpdater({ center }: { center?: [number, number] }) {
     if (center) {
       map.flyTo(center, map.getZoom(), { duration: 0.5 });
     }
-  }, [map, center?.join(',')]);
+  }, [map, center?.[0], center?.[1]]);
   return null;
 }
 
@@ -78,12 +116,24 @@ export default function MapView({
   driverLocation,
   markers,
   onClick,
+  showDistrict = true,
+  showSatelliteToggle = true,
 }: MapViewProps) {
+  const [tileKey, setTileKey] = useState<'standard' | 'satellite'>('standard');
+  const pickupInside = pickup ? isInsideDistrict(pickup) : null;
+  const destInside = destination ? isInsideDistrict(destination) : null;
+
+  const toggleTiles = useCallback(() => {
+    setTileKey((k) => (k === 'standard' ? 'satellite' : 'standard'));
+  }, []);
+
+  const tileLayer = TILE_LAYERS[tileKey];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="w-full h-full rounded-2xl overflow-hidden"
+      className="w-full h-full rounded-2xl overflow-hidden relative"
     >
       <MapContainer
         center={center}
@@ -92,14 +142,39 @@ export default function MapView({
         zoomControl={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={tileKey}
+          url={tileLayer.url}
+          attribution={tileLayer.attribution}
         />
         <MapClickHandler onClick={onClick} />
         <MapCenterUpdater center={center} />
 
-        {pickup && <Marker position={[pickup.lat, pickup.lng]} icon={pickupIcon} />}
-        {destination && <Marker position={[destination.lat, destination.lng]} icon={destinationIcon} />}
+        {showDistrict && (
+          <>
+            <Polygon
+              positions={districtPolygon}
+              pathOptions={{
+                color: '#22c55e',
+                weight: 4,
+                fillColor: '#22c55e',
+                fillOpacity: 0.2,
+              }}
+            />
+          </>
+        )}
+
+        {pickup && (
+          <Marker
+            position={[pickup.lat, pickup.lng]}
+            icon={pickupInside !== null ? pickupStatusIcon(pickupInside) : pickupIcon}
+          />
+        )}
+        {destination && (
+          <Marker
+            position={[destination.lat, destination.lng]}
+            icon={destInside !== null ? destStatusIcon(destInside) : destinationIcon}
+          />
+        )}
         {driverLocation && <Marker position={[driverLocation.lat, driverLocation.lng]} icon={carIcon} />}
         {markers?.map((m, i) => (
           <Marker key={i} position={[m.lat, m.lng]} icon={defaultIcon}>
@@ -107,6 +182,19 @@ export default function MapView({
           </Marker>
         ))}
       </MapContainer>
+
+      {showSatelliteToggle && (
+        <button
+          onClick={toggleTiles}
+          className="absolute top-4 right-4 z-[1000] px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-md border border-white/10"
+          style={{
+            background: 'rgba(0,0,0,0.6)',
+            color: '#fff',
+          }}
+        >
+          🛰 {tileKey === 'standard' ? 'Satellite' : 'Standard'}
+        </button>
+      )}
     </motion.div>
   );
 }

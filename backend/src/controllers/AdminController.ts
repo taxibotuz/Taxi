@@ -9,6 +9,7 @@ import { Notification } from '../models/Notification';
 import { ActivityLog } from '../models/ActivityLog';
 import { TelegramBot } from '../bot';
 import { UserRole, RideStatus } from '../types';
+import { GeoService } from '../services/GeoService';
 import { logger } from '../config/logger';
 
 export class AdminController {
@@ -484,6 +485,8 @@ export class AdminController {
         { $set: updates },
         { new: true, upsert: true }
       );
+
+      await GeoService.reloadBoundary();
 
       await ActivityLog.create({
         userId: req.user!._id,

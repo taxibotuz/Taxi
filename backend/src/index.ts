@@ -14,6 +14,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { ErrorReporter } from './services/ErrorReporter';
 import { RedisService } from './services/RedisService';
 import { Settings } from './models/Settings';
+import { GeoService } from './services/GeoService';
 
 import authRoutes from './routes/auth';
 import rideRoutes from './routes/rides';
@@ -232,6 +233,9 @@ async function start() {
       maxPoolSize: 10,
     });
     logger.info('MongoDB connected');
+
+    await GeoService.loadBoundary();
+    logger.info('District boundary loaded from database');
 
     server.listen(config.port, config.host, () => {
       logger.info(`Server running on http://${config.host}:${config.port}`);
