@@ -239,7 +239,11 @@ async function start() {
     });
 
     await RedisService.getInstance().connect();
-    await bot.launch();
+    try {
+      await bot.launch();
+    } catch (error) {
+      logger.error('Failed to launch bot (server continues):', error);
+    }
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);

@@ -144,6 +144,8 @@ export class ErrorReporter {
       ErrorReporter.rateLimitMap.set(fingerprint, { count: 1, firstSeen: now, notified: true });
 
       await ErrorReporter.sendToTelegram(logEntry);
+
+      await ErrorLog.findByIdAndUpdate(logEntry._id, { notified: true });
     } catch (reportError) {
       logger.error('ErrorReporter failed to report error:', reportError);
     }

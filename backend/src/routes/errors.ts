@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ErrorLog } from '../models/ErrorLog';
+import { ErrorReporter } from '../services/ErrorReporter';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -8,37 +9,17 @@ router.post('/report', async (req: Request, res: Response) => {
   try {
     const { name, message, stack, type, endpoint, method, statusCode, url, userAgent, platform, browser, tgVersion, appVersion } = req.body;
 
-    const fingerprint = `${name || 'Error'}:${(message || '').substring(0, 150)}:${endpoint || url || 'unknown'}`;
+    const reportError = new Error(message || 'Unknown frontend error');
+    reportError.name = name || 'FrontendError';
+    if (stack) reportError.stack = stack;
 
-    const existing = await ErrorLog.findOne({ fingerprint }).sort({ createdAt: -1 });
-    if (existing) {
-      const elapsed = Date.now() - new Date(existing.createdAt).getTime();
-      if (elapsed < 5 * 60 * 1000) {
-        await ErrorLog.findByIdAndUpdate(existing._id, {
-          $inc: { count: 1 },
-          lastOccurrence: new Date(),
-        });
-        return res.json({ logged: true, aggregated: true });
-      }
-    }
-
-    await ErrorLog.create({
-      type: type || 'frontend',
-      name: name || 'Error',
-      message: message || 'Unknown frontend error',
-      stack,
+    await ErrorReporter.report(reportError, {
+      type: type === 'axios' ? 'axios' : 'frontend',
       endpoint: endpoint || url,
       method: method || 'GET',
       statusCode: statusCode || 500,
       userAgent,
-      environment: process.env.NODE_ENV || 'production',
-      severity: 'high',
-      fingerprint,
-      metadata: JSON.stringify({ platform, browser, tgVersion, appVersion }),
-      count: 1,
-      firstOccurrence: new Date(),
-      lastOccurrence: new Date(),
-      notified: false,
+      metadata: { platform, browser, tgVersion, appVersion },
     });
 
     return res.json({ logged: true });
