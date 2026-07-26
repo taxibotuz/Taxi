@@ -76,17 +76,6 @@ function App() {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="*" element={<Navigate to="/auth" replace />} />
             </>
-          ) : user?.role === 'admin' ? (
-            <>
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="drivers" element={<div>Drivers</div>} />
-                <Route path="orders" element={<div>Orders</div>} />
-                <Route path="users" element={<div>Users</div>} />
-                <Route path="settings" element={<div>Settings</div>} />
-              </Route>
-              <Route path="/*" element={<Navigate to="/admin" replace />} />
-            </>
           ) : user?.role === 'driver' ? (
             <>
               <Route path="/driver" element={<DriverLayout />}>
@@ -97,6 +86,15 @@ function App() {
             </>
           ) : (
             <>
+              {user?.role === 'admin' && (
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="drivers" element={<div>Drivers</div>} />
+                  <Route path="orders" element={<div>Orders</div>} />
+                  <Route path="users" element={<div>Users</div>} />
+                  <Route path="settings" element={<div>Settings</div>} />
+                </Route>
+              )}
               <Route element={<CustomerLayout />}>
                 <Route path="/" element={<CustomerHome />} />
                 <Route path="/search" element={<RideSearch />} />
