@@ -8,8 +8,10 @@ import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import MapView from '../../components/ui/MapView';
 import { isInsideDistrict, getDefaultCenter, districtConfig, getBoundary } from '../../services/geo';
+import { useTranslation } from '../../i18n';
 
 export default function RideSearch() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { pickup, destination, currentOrder, setCurrentOrder, setIsSearching, isSearching, priceEstimate, setPriceEstimate } = useRideStore();
   const token = useAuthStore((s) => s.token);
@@ -60,7 +62,7 @@ export default function RideSearch() {
         setIsSearching(false);
       }
       if (data.status === 'timeout') {
-        toast.error('No drivers found. Try again.');
+        toast.error(t('no_drivers_found'));
         setIsSearching(false);
         setStep('price');
       }
@@ -80,12 +82,12 @@ export default function RideSearch() {
     if (!pickup || !destination || !priceEstimate) return;
 
     if (!pickupInside) {
-      toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+      toast.error(t('taxi_only_tortkol'));
       return;
     }
 
     if (!destInside) {
-      toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+      toast.error(t('taxi_only_tortkol'));
       return;
     }
 
@@ -110,19 +112,19 @@ export default function RideSearch() {
       setStep('searching');
       setIsSearching(true);
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to create order');
+      toast.error(error.response?.data?.error || t('failed_create_order'));
     }
   };
 
   const selectedMethod = (method: string) => paymentMethod === method ? 'bg-primary-500 text-white' : 'bg-white/10 text-white';
 
   const paymentMethods = [
-    { value: 'cash', label: '💵 Cash', desc: 'Pay cash to driver' },
-    { value: 'click', label: '🔵 Click', desc: 'Pay with Click' },
-    { value: 'payme', label: '🟢 Payme', desc: 'Pay with Payme' },
-    { value: 'uzum', label: '🟣 Uzum', desc: 'Pay with Uzum' },
-    { value: 'card', label: '💳 Card', desc: 'Pay by card' },
-    { value: 'wallet', label: '👛 Wallet', desc: 'TaxiGo Wallet' },
+    { value: 'cash', label: t('cash'), desc: t('cash_desc') },
+    { value: 'click', label: t('click'), desc: t('click_desc') },
+    { value: 'payme', label: t('payme'), desc: t('payme_desc') },
+    { value: 'uzum', label: t('uzum'), desc: t('uzum_desc') },
+    { value: 'card', label: t('card'), desc: t('card_desc') },
+    { value: 'wallet', label: t('wallet'), desc: t('wallet_desc') },
   ];
 
   return (
@@ -154,12 +156,12 @@ export default function RideSearch() {
         <div className="absolute top-4 right-16 z-10 flex gap-2">
           {pickup && (
             <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${pickupInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
-              Pickup {pickupInside ? '✓ Inside' : '✗ Outside'}
+              {pickupInside ? t('inside') : t('outside')}
             </span>
           )}
           {destination && (
             <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${destInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
-              Dest {destInside ? '✓ Inside' : '✗ Outside'}
+              {destInside ? t('inside') : t('outside')}
             </span>
           )}
         </div>
@@ -175,42 +177,42 @@ export default function RideSearch() {
             className="glass rounded-t-3xl p-5 space-y-4"
           >
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Price Breakdown</h2>
+              <h2 className="text-lg font-semibold">{t('price_breakdown')}</h2>
               <span className="text-2xl font-bold text-primary-500">
-                {priceEstimate.total.toLocaleString()} sum
+                {priceEstimate.total.toLocaleString()} {t('sum')}
               </span>
             </div>
 
             <div className="space-y-2 text-sm text-gray-400">
               <div className="flex justify-between">
-                <span>Base fare</span>
-                <span>{priceEstimate.baseFare.toLocaleString()} sum</span>
+                <span>{t('base_fare')}</span>
+                <span>{priceEstimate.baseFare.toLocaleString()} {t('sum')}</span>
               </div>
               <div className="flex justify-between">
-                <span>Distance</span>
-                <span>{priceEstimate.distanceFare.toLocaleString()} sum</span>
+                <span>{t('distance')}</span>
+                <span>{priceEstimate.distanceFare.toLocaleString()} {t('sum')}</span>
               </div>
               <div className="flex justify-between">
-                <span>Time</span>
-                <span>{priceEstimate.timeFare.toLocaleString()} sum</span>
+                <span>{t('time')}</span>
+                <span>{priceEstimate.timeFare.toLocaleString()} {t('sum')}</span>
               </div>
               {priceEstimate.nightSurcharge > 0 && (
                 <div className="flex justify-between text-yellow-400">
-                  <span>🌙 Night surcharge</span>
-                  <span>+{priceEstimate.nightSurcharge.toLocaleString()} sum</span>
+                  <span>{t('night_surcharge')}</span>
+                  <span>+{priceEstimate.nightSurcharge.toLocaleString()} {t('sum')}</span>
                 </div>
               )}
               {priceEstimate.rushSurcharge > 0 && (
                 <div className="flex justify-between text-orange-400">
-                  <span>⚡ Rush surcharge</span>
-                  <span>+{priceEstimate.rushSurcharge.toLocaleString()} sum</span>
+                  <span>{t('rush_surcharge')}</span>
+                  <span>+{priceEstimate.rushSurcharge.toLocaleString()} {t('sum')}</span>
                 </div>
               )}
             </div>
 
             <div>
               <label className="text-sm text-gray-400 mb-2 block">
-                Offer price (optional)
+                {t('offer_price')}
               </label>
               <input
                 type="number"
@@ -221,7 +223,7 @@ export default function RideSearch() {
             </div>
 
             <div>
-              <label className="text-sm text-gray-400 mb-2 block">Payment method</label>
+              <label className="text-sm text-gray-400 mb-2 block">{t('payment_method')}</label>
               <div className="grid grid-cols-3 gap-2">
                 {paymentMethods.map((m) => (
                   <button
@@ -239,7 +241,7 @@ export default function RideSearch() {
               onClick={handleOrderRide}
               className="w-full py-4 rounded-2xl bg-primary-500 text-white font-semibold text-lg shadow-lg shadow-primary-500/30 active:scale-[0.98] transition-transform"
             >
-              Order Taxi — {offeredPrice.toLocaleString()} sum
+              {t('order_taxi_price', { price: offeredPrice.toLocaleString() })}
             </button>
           </motion.div>
         )}
@@ -260,8 +262,8 @@ export default function RideSearch() {
                 </div>
               </div>
             </div>
-            <h2 className="text-xl font-semibold">Searching for drivers...</h2>
-            <p className="text-gray-400 text-sm">Looking for nearest available drivers</p>
+            <h2 className="text-xl font-semibold">{t('searching_drivers')}</h2>
+            <p className="text-gray-400 text-sm">{t('looking_for_drivers')}</p>
             <div className="flex justify-center gap-2">
               {[0, 1, 2].map((i) => (
                 <motion.div
@@ -279,7 +281,7 @@ export default function RideSearch() {
               }}
               className="text-red-400 text-sm"
             >
-              Cancel search
+              {t('cancel_search')}
             </button>
           </motion.div>
         )}
@@ -297,7 +299,7 @@ export default function RideSearch() {
                 🚗
               </div>
               <div>
-                <h3 className="font-semibold">Driver is on the way!</h3>
+                <h3 className="font-semibold">{t('driver_on_way')}</h3>
                 <p className="text-sm text-gray-400">
                   {currentOrder.driverId?.car?.brand} {currentOrder.driverId?.car?.model} • {currentOrder.driverId?.car?.color}
                 </p>
@@ -307,19 +309,19 @@ export default function RideSearch() {
             {driverLocation && (
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                Driver is moving to your location
+                {t('driver_moving')}
               </div>
             )}
 
             <div className="flex gap-3">
               <button className="flex-1 py-3 rounded-xl bg-green-500/20 text-green-400 text-sm font-medium">
-                📞 Call
+                {t('call')}
               </button>
               <button className="flex-1 py-3 rounded-xl bg-primary-500/20 text-primary-400 text-sm font-medium">
-                💬 Chat
+                {t('chat')}
               </button>
               <button className="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 text-sm font-medium">
-                🆘 SOS
+                {t('sos')}
               </button>
             </div>
           </motion.div>

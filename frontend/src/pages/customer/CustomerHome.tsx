@@ -6,8 +6,10 @@ import { useRideStore } from '../../store/rideStore';
 import { ridesApi } from '../../services/api';
 import { isInsideDistrict, getDefaultCenter } from '../../services/geo';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../i18n';
 
 export default function CustomerHome() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { pickup, destination, setPickup, setDestination, setPriceEstimate, priceEstimate } = useRideStore();
   const [showPickupSearch, setShowPickupSearch] = useState(false);
@@ -29,7 +31,7 @@ export default function CustomerHome() {
           if (isInsideDistrict(point)) {
             setPickup({ lat: loc[0], lng: loc[1], address: 'Current Location' });
           } else {
-            toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+            toast.error(t('taxi_only_tortkol'));
             setPickup({ lat: getDefaultCenter().lat, lng: getDefaultCenter().lng, address: "To'rtko'l tumani markazi" });
           }
         },
@@ -49,23 +51,23 @@ export default function CustomerHome() {
       setPickup({ lat, lng, address: `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
       setPickupText(`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
       setShowPickupSearch(false);
-      if (!inside) toast.error("Pickup outside To'rtko'l district");
+      if (!inside) toast.error(t('pickup_outside_district'));
     } else if (showDestSearch || !destination) {
       setDestination({ lat, lng, address: `🏁 ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
       setDestText(`🏁 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
       setShowDestSearch(false);
-      if (!inside) toast.error("Destination outside To'rtko'l district");
+      if (!inside) toast.error(t('dest_outside_district'));
     }
   };
 
   const handleOrderRide = () => {
     if (!pickup || !destination) return;
     if (!isInsideDistrict(pickup)) {
-      toast.error("Pickup location is outside the service area");
+      toast.error(t('pickup_outside_service'));
       return;
     }
     if (!isInsideDistrict(destination)) {
-      toast.error("Destination is outside the service area");
+      toast.error(t('dest_outside_service'));
       return;
     }
     navigate('/search');
@@ -99,7 +101,7 @@ export default function CustomerHome() {
             <div className={`w-3 h-3 rounded-full flex-shrink-0 ${pickupInside === null ? 'bg-green-500' : pickupInside ? 'bg-green-500' : 'bg-red-500'}`} />
             <input
               type="text"
-              placeholder="Pickup location"
+              placeholder={t('pickup_location')}
               value={pickupText}
               onChange={(e) => setPickupText(e.target.value)}
               className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-400"
@@ -107,7 +109,7 @@ export default function CustomerHome() {
             />
             {pickupInside !== null && (
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pickupInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
-                {pickupInside ? '✓ Inside' : '✗ Outside'}
+                {pickupInside ? t('inside') : t('outside')}
               </span>
             )}
           </div>
@@ -119,7 +121,7 @@ export default function CustomerHome() {
             <div className={`w-3 h-3 rounded-full flex-shrink-0 ${destInside === null ? 'bg-red-500' : destInside ? 'bg-green-500' : 'bg-red-500'}`} />
             <input
               type="text"
-              placeholder="Where to?"
+              placeholder={t('where_to')}
               value={destText}
               onChange={(e) => setDestText(e.target.value)}
               className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-400"
@@ -127,7 +129,7 @@ export default function CustomerHome() {
             />
             {destInside !== null && (
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${destInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
-                {destInside ? '✓ Inside' : '✗ Outside'}
+                {destInside ? t('inside') : t('outside')}
               </span>
             )}
           </div>
@@ -146,7 +148,7 @@ export default function CustomerHome() {
               onClick={handleOrderRide}
               className="w-full py-4 rounded-2xl bg-primary-500 text-white font-semibold text-lg shadow-lg shadow-primary-500/30 active:scale-[0.98] transition-transform"
             >
-              Order Taxi
+              {t('order_taxi')}
             </button>
           </motion.div>
         )}

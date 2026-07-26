@@ -1,4 +1,5 @@
 import { Component, ReactNode, ErrorInfo } from 'react';
+import translations from '../../i18n/translations';
 
 interface Props {
   children: ReactNode;
@@ -26,6 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const t = (key: string) => translations.uz[key] || key;
       return (
         <div style={{
           height: '100%',
@@ -42,10 +44,10 @@ export default class ErrorBoundary extends Component<Props, State> {
           <div style={{ textAlign: 'center', maxWidth: '400px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
             <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>
-              Something went wrong
+              {t('something_wrong')}
             </h1>
             <p style={{ fontSize: '14px', color: '#8e8e93', marginBottom: '24px' }}>
-              {this.state.error?.message || 'An unexpected error occurred'}
+              {this.state.error?.message || t('unexpected_error')}
             </p>
             <button
               onClick={this.handleRetry}
@@ -60,7 +62,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 cursor: 'pointer',
               }}
             >
-              Try Again
+              {t('try_again')}
             </button>
           </div>
         </div>

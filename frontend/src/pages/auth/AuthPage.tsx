@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../services/api';
 import { connectSocket } from '../../services/socket';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../i18n';
 
 function getTelegramUser(): any {
   const unsafe = (window as any).__TG_INIT_DATA_UNSAFE;
@@ -19,6 +20,7 @@ function isTelegramEnv(): boolean {
 }
 
 export default function AuthPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
@@ -85,7 +87,7 @@ export default function AuthPage() {
       <div className="h-full w-full flex items-center justify-center bg-[#0a0a1a]">
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
-          <p className="text-gray-400 text-sm">Connecting...</p>
+          <p className="text-gray-400 text-sm">{t('auth_connecting')}</p>
         </div>
       </div>
     );
@@ -110,9 +112,9 @@ export default function AuthPage() {
           🚕
         </motion.div>
         <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary-300 to-primary-500 bg-clip-text text-transparent">
-          TaxiGo
+          {t('auth_taxigo')}
         </h1>
-        <p className="text-gray-400">Premium Taxi & Delivery Service</p>
+        <p className="text-gray-400">{t('auth_subtitle')}</p>
       </motion.div>
 
       <motion.button
@@ -128,7 +130,7 @@ export default function AuthPage() {
         ) : (
           <>
             <span>✈️</span>
-            {isTelegramEnv() ? 'Continue with Telegram' : 'Continue as Guest (Browser Mode)'}
+            {isTelegramEnv() ? t('auth_continue_telegram') : t('auth_continue_guest')}
           </>
         )}
       </motion.button>
@@ -139,7 +141,7 @@ export default function AuthPage() {
         transition={{ delay: 0.5 }}
         className="mt-6 text-xs text-gray-500 text-center max-w-xs"
       >
-        By continuing, you agree to our Terms of Service and Privacy Policy
+        {t('auth_terms')}
       </motion.p>
     </div>
   );

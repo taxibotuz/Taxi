@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { driversApi } from '../../services/api';
 import { isInsideDistrict } from '../../services/geo';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../i18n';
 
 export default function DriverDashboard() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -16,7 +18,7 @@ export default function DriverDashboard() {
   const toggleMutation = useMutation({
     mutationFn: () => driversApi.toggleOnline(),
     onSuccess: (data: any) => {
-      toast.success(data.data.isOnline ? 'You are online!' : 'You are offline');
+      toast.success(data.data.isOnline ? t('you_are_online') : t('you_are_offline'));
       queryClient.invalidateQueries({ queryKey: ['driver', 'dashboard'] });
     },
   });
@@ -60,7 +62,7 @@ export default function DriverDashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between"
       >
-        <h1 className="text-2xl font-bold">Driver Panel</h1>
+        <h1 className="text-2xl font-bold">{t('driver_panel')}</h1>
         {isInDistrict ? (
           <button
             onClick={() => toggleMutation.mutate()}
@@ -70,11 +72,11 @@ export default function DriverDashboard() {
                 : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
             }`}
           >
-            {driver?.isOnline ? '🟢 Online' : '🔴 Offline'}
+            {driver?.isOnline ? t('online') : t('offline')}
           </button>
         ) : (
           <div className="px-4 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-medium text-center">
-            To'rtko'l tumanidan tashqarida
+            {t('tortkol_outside')}
           </div>
         )}
       </motion.div>
@@ -87,7 +89,7 @@ export default function DriverDashboard() {
         >
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-            <span className="font-semibold">Active Ride</span>
+            <span className="font-semibold">{t('active_ride')}</span>
           </div>
           <p className="text-sm text-gray-400 mt-2">
             #{activeRide.orderNumber} • {activeRide.pickup.address.slice(0, 30)}...
@@ -96,16 +98,16 @@ export default function DriverDashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon="💰" label="Today" value={`${stats?.todayEarnings?.toLocaleString() || 0} sum`} />
-        <StatCard icon="📊" label="This Week" value={`${stats?.weeklyEarnings?.toLocaleString() || 0} sum`} />
-        <StatCard icon="📈" label="This Month" value={`${stats?.monthlyEarnings?.toLocaleString() || 0} sum`} />
-        <StatCard icon="🏆" label="Total" value={`${stats?.totalEarnings?.toLocaleString() || 0} sum`} />
+        <StatCard icon="💰" label={t('today')} value={`${stats?.todayEarnings?.toLocaleString() || 0} ${t('sum')}`} />
+        <StatCard icon="📊" label={t('this_week')} value={`${stats?.weeklyEarnings?.toLocaleString() || 0} ${t('sum')}`} />
+        <StatCard icon="📈" label={t('this_month')} value={`${stats?.monthlyEarnings?.toLocaleString() || 0} ${t('sum')}`} />
+        <StatCard icon="🏆" label={t('total')} value={`${stats?.totalEarnings?.toLocaleString() || 0} ${t('sum')}`} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard icon="🚗" label="Rides" value={stats?.totalRides || 0} />
-        <StatCard icon="⭐" label="Rating" value={driver?.rating?.toFixed(1) || '5.0'} />
-        <StatCard icon="📋" label="Today" value={stats?.todayRides || 0} />
+        <StatCard icon="🚗" label={t('rides')} value={stats?.totalRides || 0} />
+        <StatCard icon="⭐" label={t('rating')} value={driver?.rating?.toFixed(1) || '5.0'} />
+        <StatCard icon="📋" label={t('today')} value={stats?.todayRides || 0} />
       </div>
 
       {driver?.car && (
@@ -114,22 +116,22 @@ export default function DriverDashboard() {
           animate={{ opacity: 1 }}
           className="glass rounded-2xl p-4"
         >
-          <h3 className="font-semibold mb-3">🚗 My Car</h3>
+          <h3 className="font-semibold mb-3">{t('my_car')}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Brand</span>
+              <span className="text-gray-400">{t('brand')}</span>
               <span>{driver.car.brand}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Model</span>
+              <span className="text-gray-400">{t('model')}</span>
               <span>{driver.car.model}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Color</span>
+              <span className="text-gray-400">{t('color')}</span>
               <span>{driver.car.color}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Plate</span>
+              <span className="text-gray-400">{t('plate')}</span>
               <span className="font-mono">{driver.car.plateNumber}</span>
             </div>
           </div>
@@ -142,8 +144,8 @@ export default function DriverDashboard() {
           animate={{ opacity: 1 }}
           className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 text-center"
         >
-          <p className="text-yellow-400 font-medium">⏳ Pending Approval</p>
-          <p className="text-xs text-gray-400 mt-1">Your account is being reviewed by admin</p>
+          <p className="text-yellow-400 font-medium">{t('pending_approval')}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('account_reviewing')}</p>
         </motion.div>
       )}
     </div>

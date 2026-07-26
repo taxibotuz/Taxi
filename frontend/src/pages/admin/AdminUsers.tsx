@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../i18n';
 
 export default function AdminUsers() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -17,20 +19,20 @@ export default function AdminUsers() {
 
   const banMutation = useMutation({
     mutationFn: (userId: string) => adminApi.banUser(userId, 'Banned by admin'),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success('User banned'); },
-    onError: () => toast.error('Failed to ban user'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success(t('user_banned')); },
+    onError: () => toast.error(t('failed_ban')),
   });
 
   const unbanMutation = useMutation({
     mutationFn: (userId: string) => adminApi.unbanUser(userId),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success('User unbanned'); },
-    onError: () => toast.error('Failed to unban user'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success(t('user_unbanned')); },
+    onError: () => toast.error(t('failed_unban')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (userId: string) => adminApi.deleteUser(userId),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success('User deleted'); },
-    onError: () => toast.error('Failed to delete user'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success(t('user_deleted')); },
+    onError: () => toast.error(t('failed_delete')),
   });
 
   const users = data?.data?.users || [];
@@ -41,29 +43,29 @@ export default function AdminUsers() {
     try {
       const res = await adminApi.getUserById(u._id);
       setDetail(res.data);
-    } catch { toast.error('Failed to load user details'); }
+    } catch { toast.error(t('failed_load_user')); }
   };
 
   return (
     <div className="py-4 space-y-4">
-      <h1 className="text-xl font-bold">👤 Users</h1>
+      <h1 className="text-xl font-bold">👤 {t('admin_users')}</h1>
 
       <div className="flex gap-2">
         <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search users..." className="flex-1 bg-white/10 rounded-lg px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-primary-500" />
+          placeholder={t('search_users')} className="flex-1 bg-white/10 rounded-lg px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-primary-500" />
         <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
           className="bg-white/10 rounded-lg px-3 py-2 text-sm outline-none">
-          <option value="">All Roles</option>
-          <option value="customer">Customer</option>
-          <option value="driver">Driver</option>
-          <option value="admin">Admin</option>
+          <option value="">{t('all_roles')}</option>
+          <option value="customer">{t('customer')}</option>
+          <option value="driver">{t('driver_role')}</option>
+          <option value="admin">{t('admin_role')}</option>
         </select>
       </div>
 
       {isLoading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-white/5 rounded-xl animate-pulse" />)}</div>
       ) : users.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 text-sm">No users found</div>
+        <div className="text-center py-8 text-gray-500 text-sm">{t('no_users_found')}</div>
       ) : (
         <div className="space-y-2">
           {users.map((u: any) => (
@@ -79,15 +81,15 @@ export default function AdminUsers() {
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs px-2 py-0.5 rounded-full ${u.isBanned ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-                  {u.isBanned ? 'Banned' : 'Active'}
+                  {u.isBanned ? t('banned') : t('active')}
                 </span>
                 {u.isBanned ? (
-                  <button onClick={() => unbanMutation.mutate(u._id)} className="text-xs text-green-400 hover:underline">Unban</button>
+                  <button onClick={() => unbanMutation.mutate(u._id)} className="text-xs text-green-400 hover:underline">{t('unban')}</button>
                 ) : (
-                  <button onClick={() => banMutation.mutate(u._id)} className="text-xs text-red-400 hover:underline">Ban</button>
+                  <button onClick={() => banMutation.mutate(u._id)} className="text-xs text-red-400 hover:underline">{t('ban')}</button>
                 )}
-                <button onClick={() => { if (confirm('Delete this user?')) deleteMutation.mutate(u._id); }}
-                  className="text-xs text-red-400 hover:underline">Del</button>
+                <button onClick={() => { if (confirm(t('delete_confirm'))) deleteMutation.mutate(u._id); }}
+                  className="text-xs text-red-400 hover:underline">{t('del')}</button>
               </div>
             </div>
           ))}
@@ -106,39 +108,39 @@ export default function AdminUsers() {
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setDetail(null)}>
           <div className="bg-[#1a1a2e] rounded-2xl p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-3">User Details</h2>
+            <h2 className="text-lg font-bold mb-3">{t('user_details')}</h2>
             {detail.user && (
               <div className="space-y-2 text-sm mb-4">
-                <div className="flex justify-between"><span className="text-gray-400">Name</span><span>{detail.user.firstName} {detail.user.lastName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Username</span><span>@{detail.user.username || '-'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Phone</span><span>{detail.user.phone || '-'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Role</span><span>{detail.user.role}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Language</span><span>{detail.user.language}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Status</span><span>{detail.user.isBanned ? 'Banned' : 'Active'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">{t('name')}</span><span>{detail.user.firstName} {detail.user.lastName}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">{t('username')}</span><span>@{detail.user.username || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">{t('phone')}</span><span>{detail.user.phone || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">{t('role')}</span><span>{detail.user.role}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">{t('language')}</span><span>{detail.user.language}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">{t('status')}</span><span>{detail.user.isBanned ? t('banned') : t('active')}</span></div>
               </div>
             )}
             {detail.stats && (
               <div className="glass rounded-xl p-3 mb-4">
-                <div className="text-sm font-semibold mb-2">Stats</div>
-                <div className="flex justify-between text-sm"><span className="text-gray-400">Total Rides</span><span>{detail.stats.totalRides}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-gray-400">Total Spent</span><span>{detail.stats.totalSpent?.toLocaleString()} sum</span></div>
+                <div className="text-sm font-semibold mb-2">{t('stats')}</div>
+                <div className="flex justify-between text-sm"><span className="text-gray-400">{t('total_rides')}</span><span>{detail.stats.totalRides}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-gray-400">{t('total_spent')}</span><span>{detail.stats.totalSpent?.toLocaleString()} {t('sum')}</span></div>
               </div>
             )}
             {detail.recentOrders && detail.recentOrders.length > 0 && (
               <div>
-                <div className="text-sm font-semibold mb-2">Recent Rides</div>
+                <div className="text-sm font-semibold mb-2">{t('recent_rides')}</div>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {detail.recentOrders.map((o: any) => (
                     <div key={o._id} className="flex justify-between text-xs py-1 border-b border-white/5">
                       <span className="text-gray-400">#{o.orderNumber}</span>
                       <span className="text-gray-500">{o.status}</span>
-                      <span className="text-gray-500">{o.pricing?.total?.toLocaleString()} sum</span>
+                      <span className="text-gray-500">{o.pricing?.total?.toLocaleString()} {t('sum')}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            <button onClick={() => setDetail(null)} className="w-full mt-4 py-3 rounded-xl bg-white/10 text-sm">Close</button>
+            <button onClick={() => setDetail(null)} className="w-full mt-4 py-3 rounded-xl bg-white/10 text-sm">{t('close')}</button>
           </div>
         </div>
       )}

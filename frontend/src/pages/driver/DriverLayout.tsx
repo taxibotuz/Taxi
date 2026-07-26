@@ -1,8 +1,10 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
+import { useTranslation } from '../../i18n';
 
 export default function DriverLayout() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
@@ -16,14 +18,14 @@ export default function DriverLayout() {
             </div>
             <div>
               <p className="font-semibold text-sm">{user?.firstName}</p>
-              <p className="text-xs text-gray-400">Driver</p>
+              <p className="text-xs text-gray-400">{t('driver')}</p>
             </div>
           </div>
           <button
             onClick={() => navigate('/driver')}
             className="text-sm text-gray-400"
           >
-            Dashboard
+            {t('dashboard')}
           </button>
         </div>
       </header>

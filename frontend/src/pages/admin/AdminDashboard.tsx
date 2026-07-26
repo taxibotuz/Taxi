@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { adminApi } from '../../services/api';
+import { useTranslation } from '../../i18n';
 
 const COLORS = ['#0c8ee7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: () => adminApi.getDashboard(),
@@ -18,17 +20,17 @@ export default function AdminDashboard() {
   const recentDrivers = data?.data?.recentDrivers || [];
 
   const chartData = [
-    { name: 'Users', value: s?.totalUsers || 0 },
-    { name: 'Drivers', value: s?.totalDrivers || 0 },
-    { name: 'Online', value: s?.onlineDrivers || 0 },
-    { name: 'Active', value: s?.activeOrders || 0 },
+    { name: t('users'), value: s?.totalUsers || 0 },
+    { name: t('drivers_stat'), value: s?.totalDrivers || 0 },
+    { name: t('online_stat'), value: s?.onlineDrivers || 0 },
+    { name: t('active_stat'), value: s?.activeOrders || 0 },
   ];
 
   const revenueData = [
-    { name: 'Today', revenue: s?.revenueToday || 0 },
-    { name: 'Week', revenue: s?.revenueWeek || 0 },
-    { name: 'Month', revenue: s?.revenueMonth || 0 },
-    { name: 'Total', revenue: s?.totalRevenue || 0 },
+    { name: t('today'), revenue: s?.revenueToday || 0 },
+    { name: t('this_week'), revenue: s?.revenueWeek || 0 },
+    { name: t('this_month'), revenue: s?.revenueMonth || 0 },
+    { name: t('total'), revenue: s?.totalRevenue || 0 },
   ];
 
   const StatCard = ({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) => (
@@ -54,31 +56,31 @@ export default function AdminDashboard() {
 
   return (
     <div className="py-4 space-y-4">
-      <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xl font-bold">Dashboard Overview</motion.h1>
+      <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xl font-bold">{t('dashboard_overview')}</motion.h1>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon="👥" label="Total Users" value={s?.totalUsers || 0} color="border-blue-500" />
-        <StatCard icon="🚗" label="Total Drivers" value={s?.totalDrivers || 0} color="border-green-500" />
-        <StatCard icon="🟢" label="Online Now" value={s?.onlineDrivers || 0} color="border-emerald-500" />
-        <StatCard icon="📦" label="Active Orders" value={s?.activeOrders || 0} color="border-yellow-500" />
+        <StatCard icon="👥" label={t('total_users')} value={s?.totalUsers || 0} color="border-blue-500" />
+        <StatCard icon="🚗" label={t('total_drivers')} value={s?.totalDrivers || 0} color="border-green-500" />
+        <StatCard icon="🟢" label={t('online_now')} value={s?.onlineDrivers || 0} color="border-emerald-500" />
+        <StatCard icon="📦" label={t('active_orders')} value={s?.activeOrders || 0} color="border-yellow-500" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon="💰" label="Today Income" value={`${(s?.revenueToday || 0).toLocaleString()} sum`} color="border-purple-500" />
-        <StatCard icon="📅" label="This Week" value={`${(s?.revenueWeek || 0).toLocaleString()} sum`} color="border-indigo-500" />
-        <StatCard icon="📆" label="This Month" value={`${(s?.revenueMonth || 0).toLocaleString()} sum`} color="border-pink-500" />
-        <StatCard icon="💵" label="Total Revenue" value={`${(s?.totalRevenue || 0).toLocaleString()} sum`} color="border-orange-500" />
+        <StatCard icon="💰" label={t('today_income')} value={`${(s?.revenueToday || 0).toLocaleString()} ${t('sum')}`} color="border-purple-500" />
+        <StatCard icon="📅" label={t('this_week')} value={`${(s?.revenueWeek || 0).toLocaleString()} ${t('sum')}`} color="border-indigo-500" />
+        <StatCard icon="📆" label={t('this_month')} value={`${(s?.revenueMonth || 0).toLocaleString()} ${t('sum')}`} color="border-pink-500" />
+        <StatCard icon="💵" label={t('total_revenue')} value={`${(s?.totalRevenue || 0).toLocaleString()} ${t('sum')}`} color="border-orange-500" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon="✅" label="Completed Today" value={s?.completedToday || 0} color="border-teal-500" />
-        <StatCard icon="❌" label="Cancelled Today" value={s?.cancelledToday || 0} color="border-red-500" />
-        <StatCard icon="⏳" label="Pending Orders" value={s?.pendingOrders || 0} color="border-amber-500" />
+        <StatCard icon="✅" label={t('completed_today')} value={s?.completedToday || 0} color="border-teal-500" />
+        <StatCard icon="❌" label={t('cancelled_today')} value={s?.cancelledToday || 0} color="border-red-500" />
+        <StatCard icon="⏳" label={t('pending_orders')} value={s?.pendingOrders || 0} color="border-amber-500" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4">
-          <h3 className="font-semibold mb-3 text-sm">📊 Overview</h3>
+          <h3 className="font-semibold mb-3 text-sm">{t('overview')}</h3>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={chartData}>
               <XAxis dataKey="name" tick={{ fill: '#8e8e93', fontSize: 10 }} />
@@ -90,7 +92,7 @@ export default function AdminDashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4">
-          <h3 className="font-semibold mb-3 text-sm">💰 Revenue</h3>
+          <h3 className="font-semibold mb-3 text-sm">{t('revenue')}</h3>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={revenueData}>
               <XAxis dataKey="name" tick={{ fill: '#8e8e93', fontSize: 10 }} />
@@ -104,9 +106,9 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4">
-          <h3 className="font-semibold mb-3 text-sm">📋 Recent Orders</h3>
+          <h3 className="font-semibold mb-3 text-sm">{t('recent_orders')}</h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {recentOrders.length === 0 && <p className="text-xs text-gray-500">No orders yet</p>}
+            {recentOrders.length === 0 && <p className="text-xs text-gray-500">{t('no_orders_yet')}</p>}
             {recentOrders.map((o: any) => (
               <div key={o._id} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
                 <span className="text-gray-400 truncate max-w-[120px]">#{o.orderNumber}</span>
@@ -118,9 +120,9 @@ export default function AdminDashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4">
-          <h3 className="font-semibold mb-3 text-sm">👤 Recent Users</h3>
+          <h3 className="font-semibold mb-3 text-sm">{t('recent_users')}</h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {recentUsers.length === 0 && <p className="text-xs text-gray-500">No users yet</p>}
+            {recentUsers.length === 0 && <p className="text-xs text-gray-500">{t('no_users_yet')}</p>}
             {recentUsers.map((u: any) => (
               <div key={u._id} className="flex items-center gap-2 text-xs py-1.5 border-b border-white/5 last:border-0">
                 <div className="w-6 h-6 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-500 font-bold text-[10px]">
@@ -134,9 +136,9 @@ export default function AdminDashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4">
-          <h3 className="font-semibold mb-3 text-sm">🚗 Recent Drivers</h3>
+          <h3 className="font-semibold mb-3 text-sm">{t('recent_drivers')}</h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {recentDrivers.length === 0 && <p className="text-xs text-gray-500">No drivers yet</p>}
+            {recentDrivers.length === 0 && <p className="text-xs text-gray-500">{t('no_drivers_yet')}</p>}
             {recentDrivers.map((d: any) => (
               <div key={d._id} className="flex items-center gap-2 text-xs py-1.5 border-b border-white/5 last:border-0">
                 <div className={`w-2 h-2 rounded-full ${d.isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />

@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, Polyline, useM
 import L from 'leaflet';
 import { motion } from 'framer-motion';
 import { isInsideDistrict, districtConfig, getBoundary } from '../../services/geo';
+import { useTranslation } from '../../i18n';
 
 const defaultIcon = L.divIcon({
   className: 'custom-marker',
@@ -128,6 +129,7 @@ export default function MapView({
   etaSeconds,
   distanceKm,
 }: MapViewProps) {
+  const { t } = useTranslation();
   const [tileKey, setTileKey] = useState<'standard' | 'satellite'>('satellite');
   const pickupInside = pickup ? isInsideDistrict(pickup) : null;
   const destInside = destination ? isInsideDistrict(destination) : null;
@@ -209,19 +211,19 @@ export default function MapView({
          {distanceKm != null && (
            <div className="text-center">
              <div className="text-lg font-bold text-white">{distanceKm.toFixed(1)} km</div>
-             <div className="text-[10px] text-gray-400">Distance</div>
+              <div className="text-[10px] text-gray-400">{t('distance_label')}</div>
            </div>
          )}
          {etaSeconds != null && (
            <div className="text-center">
              <div className="text-lg font-bold text-primary-500">{Math.ceil(etaSeconds / 60)} min</div>
-             <div className="text-[10px] text-gray-400">ETA</div>
+              <div className="text-[10px] text-gray-400">{t('eta_label')}</div>
            </div>
          )}
          {driverLocation && (
            <div className="text-center">
              <div className="text-lg font-bold text-green-500">●</div>
-             <div className="text-[10px] text-gray-400">Driver</div>
+              <div className="text-[10px] text-gray-400">{t('driver_label')}</div>
            </div>
          )}
        </div>
@@ -236,7 +238,7 @@ export default function MapView({
             color: '#fff',
           }}
         >
-          🛰 {tileKey === 'standard' ? 'Satellite' : 'Standard'}
+          🛰 {tileKey === 'standard' ? t('satellite') : t('standard')}
         </button>
       )}
     </motion.div>

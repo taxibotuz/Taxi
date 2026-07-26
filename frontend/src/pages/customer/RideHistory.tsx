@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { ridesApi } from '../../services/api';
 import { Order } from '../../types';
+import { useTranslation } from '../../i18n';
 
 export default function RideHistory() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['rides', 'history'],
     queryFn: () => ridesApi.getOrders({ limit: 50 }),
@@ -20,10 +22,10 @@ export default function RideHistory() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'completed': return '✅ Completed';
-      case 'cancelled': return '❌ Cancelled';
-      case 'in_progress': return '🔄 In Progress';
-      default: return '⏳ Pending';
+      case 'completed': return t('completed');
+      case 'cancelled': return t('cancelled');
+      case 'in_progress': return t('in_progress');
+      default: return t('pending');
     }
   };
 
@@ -34,7 +36,7 @@ export default function RideHistory() {
         animate={{ opacity: 1, y: 0 }}
         className="text-2xl font-bold mb-6"
       >
-        Ride History
+        {t('ride_history')}
       </motion.h1>
 
       {isLoading ? (
@@ -71,14 +73,14 @@ export default function RideHistory() {
               </div>
               <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10">
                 <span className="text-sm text-gray-400">{order.distance} km • {order.duration} min</span>
-                <span className="font-semibold">{order.pricing.total.toLocaleString()} sum</span>
+                <span className="font-semibold">{order.pricing.total.toLocaleString()} {t('sum')}</span>
               </div>
             </motion.div>
           ))}
           {data?.data?.orders?.length === 0 && (
             <div className="text-center text-gray-400 py-12">
               <div className="text-4xl mb-3">📋</div>
-              No rides yet
+              {t('no_rides_yet')}
             </div>
           )}
         </div>

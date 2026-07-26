@@ -1,26 +1,28 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-const adminTabs = [
-  { path: '/admin', label: 'Dashboard', icon: '📊' },
-  { path: '/admin/drivers', label: 'Drivers', icon: '🚗' },
-  { path: '/admin/orders', label: 'Orders', icon: '📦' },
-  { path: '/admin/users', label: 'Users', icon: '👥' },
-  { path: '/admin/reports', label: 'Reports', icon: '📈' },
-  { path: '/admin/notifications', label: 'Notify', icon: '📢' },
-  { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
-  { path: '/admin/error-logs', label: 'Error Logs', icon: '🛡️' },
-];
+import { useTranslation } from '../../i18n';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
+
+  const adminTabs = [
+    { path: '/admin', label: t('dashboard_overview'), icon: '📊' },
+    { path: '/admin/drivers', label: t('admin_drivers'), icon: '🚗' },
+    { path: '/admin/orders', label: t('admin_orders'), icon: '📦' },
+    { path: '/admin/users', label: t('admin_users'), icon: '👥' },
+    { path: '/admin/reports', label: t('admin_reports'), icon: '📈' },
+    { path: '/admin/notifications', label: t('admin_notify'), icon: '📢' },
+    { path: '/admin/settings', label: t('admin_settings'), icon: '⚙️' },
+    { path: '/admin/error-logs', label: t('admin_error_logs'), icon: '🛡️' },
+  ];
 
   return (
     <div className="h-full flex flex-col bg-[#0a0a1a]">
       <header className="px-4 py-3 pt-[var(--safe-area-top)] glass">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold">⚡ Admin Panel</h1>
+          <h1 className="text-lg font-bold">{t('admin_panel')}</h1>
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
         </div>
       </header>
