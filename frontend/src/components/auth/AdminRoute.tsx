@@ -1,26 +1,52 @@
+import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { authApi } from '../../services/api';
 
 export default function AdminRoute() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const [verifying, setVerifying] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
-  console.group('🔐 AdminRoute');
-  console.log('isAuthenticated:', isAuthenticated);
-  console.log('user:', user);
-  console.log('user?.role:', user?.role);
-  console.log('is admin?', user?.role === 'admin');
-  console.groupEnd();
+  useEffect(() => {
+    let cancelled = false;
+    const verify = async () => {
+      try {
+        const { data } = await authApi.getProfile();
+        if (!cancelled) {
+          if (data.user?.role === 'admin') {
+            setAuthorized(true);
+          } else {
+            setAuthorized(false);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          logout();
+        }
+      } finally {
+        if (!cancelled) setVerifying(false);
+      }
+    };
+    if (isAuthenticated) {
+      verify();
+    } else {
+      setVerifying(false);
+    }
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
-    console.warn('AdminRoute: NOT authenticated, redirecting to /auth');
     return <Navigate to="/auth" replace />;
   }
 
-  if (user?.role !== 'admin') {
-    console.warn('AdminRoute: NOT admin (role=' + user?.role + '), redirecting to /');
+  if (verifying) {
+    return <div className="h-full flex items-center justify-center bg-[#0a0a1a]"><div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (!authorized || user?.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
-  console.log('AdminRoute: ALLOWED');
   return <Outlet />;
 }
