@@ -335,6 +335,56 @@ export class TelegramBot {
       await ctx.reply(`❌ You rejected ride ${rideId.slice(0, 8)}...`);
       logger.info(`Driver ${ctx.from.id} rejected ride ${rideId}`);
     });
+
+    this.bot.action('admin_dashboard', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '📊 Dashboard',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Dashboard', `${config.telegram.webappUrl}/admin`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_drivers', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '👥 Driver Management',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Drivers', `${config.telegram.webappUrl}/admin/drivers`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_orders', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '📦 Order Management',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Orders', `${config.telegram.webappUrl}/admin/orders`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_settings', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '⚙️ Settings',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Settings', `${config.telegram.webappUrl}/admin/settings`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_broadcast', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '📢 Broadcast Message\n\nSend a message to all active users:',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Broadcast', `${config.telegram.webappUrl}/admin/broadcast`)],
+        ])
+      );
+    });
   }
 
   private setupHears() {
