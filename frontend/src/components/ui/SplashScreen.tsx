@@ -17,7 +17,7 @@ export default function SplashScreen() {
           className="w-16 h-16 mx-auto mb-6 rounded-full border-2 border-primary-500 border-t-transparent"
         />
         <h1 className="text-3xl font-bold text-white mb-2">{t('auth_taxigo')}</h1>
-        <p className="text-gray-400 text-sm">{t('splash_loading')}</p>
+        <p className="text-gray-500 text-sm">{t('splash_loading')}</p>
       </motion.div>
     </div>
   );

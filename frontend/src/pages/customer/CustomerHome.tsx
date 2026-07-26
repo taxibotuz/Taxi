@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import MapView from '../../components/ui/MapView';
 import { useRideStore } from '../../store/rideStore';
-import { ridesApi } from '../../services/api';
 import { isInsideDistrict, getDefaultCenter } from '../../services/geo';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../../i18n';
@@ -11,7 +10,7 @@ import { useTranslation } from '../../i18n';
 export default function CustomerHome() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { pickup, destination, setPickup, setDestination, setPriceEstimate, priceEstimate } = useRideStore();
+  const { pickup, destination, setPickup, setDestination } = useRideStore();
   const [showPickupSearch, setShowPickupSearch] = useState(false);
   const [showDestSearch, setShowDestSearch] = useState(false);
   const [pickupText, setPickupText] = useState('');
@@ -62,14 +61,8 @@ export default function CustomerHome() {
 
   const handleOrderRide = () => {
     if (!pickup || !destination) return;
-    if (!isInsideDistrict(pickup)) {
-      toast.error(t('pickup_outside_service'));
-      return;
-    }
-    if (!isInsideDistrict(destination)) {
-      toast.error(t('dest_outside_service'));
-      return;
-    }
+    if (!isInsideDistrict(pickup)) { toast.error(t('pickup_outside_service')); return; }
+    if (!isInsideDistrict(destination)) { toast.error(t('dest_outside_service')); return; }
     navigate('/search');
   };
 
@@ -77,6 +70,7 @@ export default function CustomerHome() {
 
   return (
     <div className="relative h-full w-full">
+      {/* Map */}
       <div className="absolute inset-0">
         <MapView
           center={userLocation}
@@ -88,15 +82,17 @@ export default function CustomerHome() {
         />
       </div>
 
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 pt-[var(--safe-area-top)]">
+      {/* Search Card */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-3 sm:p-4 pt-[var(--safe-area-top)]">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="glass rounded-2xl p-4 space-y-3"
+          className="glass rounded-card p-3 sm:p-4 space-y-2.5"
         >
+          {/* Pickup Input */}
           <div
             onClick={() => { setShowPickupSearch(true); setShowDestSearch(false); }}
-            className="flex items-center gap-3 bg-white/5 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
+            className="flex items-center gap-3 bg-white/5 hover:bg-white/[0.08] active:bg-white/[0.12] rounded-input p-3 cursor-pointer transition-all"
           >
             <div className={`w-3 h-3 rounded-full flex-shrink-0 ${pickupInside === null ? 'bg-green-500' : pickupInside ? 'bg-green-500' : 'bg-red-500'}`} />
             <input
@@ -104,19 +100,23 @@ export default function CustomerHome() {
               placeholder={t('pickup_location')}
               value={pickupText}
               onChange={(e) => setPickupText(e.target.value)}
-              className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-400"
+              className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-500 min-w-0"
               readOnly={!showPickupSearch}
             />
             {pickupInside !== null && (
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${pickupInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-badge flex-shrink-0 ${pickupInside ? 'text-green-400 bg-green-500/15' : 'text-red-400 bg-red-500/15'}`}>
                 {pickupInside ? t('inside') : t('outside')}
               </span>
             )}
           </div>
 
+          {/* Divider */}
+          <div className="border-l-2 border-dashed border-white/10 h-2 ml-[21px]" />
+
+          {/* Destination Input */}
           <div
             onClick={() => { setShowDestSearch(true); setShowPickupSearch(false); }}
-            className="flex items-center gap-3 bg-white/5 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
+            className="flex items-center gap-3 bg-white/5 hover:bg-white/[0.08] active:bg-white/[0.12] rounded-input p-3 cursor-pointer transition-all"
           >
             <div className={`w-3 h-3 rounded-full flex-shrink-0 ${destInside === null ? 'bg-red-500' : destInside ? 'bg-green-500' : 'bg-red-500'}`} />
             <input
@@ -124,11 +124,11 @@ export default function CustomerHome() {
               placeholder={t('where_to')}
               value={destText}
               onChange={(e) => setDestText(e.target.value)}
-              className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-400"
+              className="bg-transparent text-white text-sm flex-1 outline-none placeholder-gray-500 min-w-0"
               readOnly={!showDestSearch}
             />
             {destInside !== null && (
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${destInside ? 'text-green-400 bg-green-500/20' : 'text-red-400 bg-red-500/20'}`}>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-badge flex-shrink-0 ${destInside ? 'text-green-400 bg-green-500/15' : 'text-red-400 bg-red-500/15'}`}>
                 {destInside ? t('inside') : t('outside')}
               </span>
             )}
@@ -136,17 +136,18 @@ export default function CustomerHome() {
         </motion.div>
       </div>
 
+      {/* Order Button */}
       <AnimatePresence>
         {isReady && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="absolute bottom-20 left-4 right-4 z-10"
+            className="absolute bottom-20 left-3 right-3 sm:left-4 sm:right-4 z-10"
           >
             <button
               onClick={handleOrderRide}
-              className="w-full py-4 rounded-2xl bg-primary-500 text-white font-semibold text-lg shadow-lg shadow-primary-500/30 active:scale-[0.98] transition-transform"
+              className="w-full py-4 rounded-card bg-primary-500 text-white font-semibold text-lg shadow-btn hover:bg-primary-600 active:scale-[0.98] transition-all"
             >
               {t('order_taxi')}
             </button>

@@ -24,17 +24,40 @@ export default {
           card: '#16213e',
           accent: '#e94560',
         },
-        glass: {
-          light: 'rgba(255, 255, 255, 0.1)',
-          medium: 'rgba(255, 255, 255, 0.15)',
-          heavy: 'rgba(255, 255, 255, 0.2)',
+        surface: {
+          DEFAULT: 'rgba(255, 255, 255, 0.06)',
+          hover: 'rgba(255, 255, 255, 0.10)',
+          active: 'rgba(255, 255, 255, 0.14)',
+          border: 'rgba(255, 255, 255, 0.08)',
         },
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['SF Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      },
+      borderRadius: {
+        'card': '16px',
+        'btn': '12px',
+        'input': '10px',
+        'badge': '8px',
+        'sheet': '20px',
+      },
+      boxShadow: {
+        'card': '0 4px 24px rgba(0, 0, 0, 0.25)',
+        'card-hover': '0 8px 32px rgba(0, 0, 0, 0.35)',
+        'btn': '0 4px 12px rgba(12, 142, 231, 0.3)',
+        'btn-hover': '0 6px 20px rgba(12, 142, 231, 0.45)',
+        'sheet': '0 -8px 32px rgba(0, 0, 0, 0.4)',
+        'glow': '0 0 20px rgba(12, 142, 231, 0.25)',
       },
       backdropBlur: {
         xs: '2px',
+      },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top, 0px)',
+        'safe-bottom': 'env(safe-area-inset-bottom, 0px)',
+        'safe-left': 'env(safe-area-inset-left, 0px)',
+        'safe-right': 'env(safe-area-inset-right, 0px)',
       },
       animation: {
         'slide-up': 'slideUp 0.3s ease-out',
@@ -44,6 +67,8 @@ export default {
         'pulse-soft': 'pulseSoft 2s infinite',
         'bounce-gentle': 'bounceGentle 1s infinite',
         'search-pulse': 'searchPulse 1.5s ease-in-out infinite',
+        'shimmer': 'shimmer 1.5s ease-in-out infinite',
+        'spin-slow': 'spin 1.5s linear infinite',
       },
       keyframes: {
         slideUp: {
@@ -73,6 +98,10 @@ export default {
         searchPulse: {
           '0%, 100%': { transform: 'scale(1)', opacity: '1' },
           '50%': { transform: 'scale(1.05)', opacity: '0.8' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
         },
       },
     },

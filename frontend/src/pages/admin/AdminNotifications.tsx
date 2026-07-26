@@ -29,22 +29,24 @@ export default function AdminNotifications() {
   };
 
   return (
-    <div className="py-4 space-y-4">
+    <div className="space-y-4">
       <h1 className="text-xl font-bold">{t('notifications')}</h1>
 
-      <div className="glass rounded-2xl p-4 space-y-4">
+      <div className="glass rounded-card p-4 sm:p-5 space-y-4">
         <h3 className="font-semibold text-sm">{t('send_broadcast')}</h3>
 
         <div>
-          <label className="text-xs text-gray-400 block mb-1">{t('target')}</label>
-          <div className="flex gap-2">
+          <label className="text-xs text-gray-400 block mb-2">{t('target')}</label>
+          <div className="flex gap-1.5 flex-wrap">
             {[
               { value: 'all', label: t('all_users') },
               { value: 'drivers', label: t('send_to_drivers') },
               { value: 'users', label: t('send_to_customers') },
             ].map(opt => (
               <button key={opt.value} onClick={() => setTarget(opt.value)}
-                className={`px-4 py-2 rounded-lg text-sm ${target === opt.value ? 'bg-primary-500 text-white' : 'bg-white/10'}`}>
+                className={`px-4 py-2 rounded-btn text-sm font-medium transition-all ${
+                  target === opt.value ? 'bg-primary-500 text-white shadow-btn' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}>
                 {opt.label}
               </button>
             ))}
@@ -52,26 +54,28 @@ export default function AdminNotifications() {
         </div>
 
         <div>
-          <label className="text-xs text-gray-400 block mb-1">{t('title')}</label>
+          <label className="text-xs text-gray-400 block mb-1.5">{t('title')}</label>
           <input value={title} onChange={e => setTitle(e.target.value)}
-            placeholder={t('title')} className="w-full bg-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary-500" />
+            placeholder={t('title')}
+            className="w-full bg-white/5 border border-white/10 rounded-input px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder-gray-500" />
         </div>
 
         <div>
-          <label className="text-xs text-gray-400 block mb-1">{t('message')}</label>
-          <textarea value={body} onChange={e => setBody(e.target.value)} rows={5}
-            placeholder={t('message')} className="w-full bg-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary-500 resize-none" />
+          <label className="text-xs text-gray-400 block mb-1.5">{t('message')}</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} rows={4}
+            placeholder={t('message')}
+            className="w-full bg-white/5 border border-white/10 rounded-input px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder-gray-500 resize-none" />
         </div>
 
         <button onClick={handleSend} disabled={mutation.isPending}
-          className="w-full py-3 rounded-xl bg-primary-500 text-sm font-semibold disabled:opacity-50">
+          className="w-full py-3 rounded-btn bg-primary-500 text-sm font-semibold shadow-btn disabled:opacity-50 hover:bg-primary-600 active:scale-[0.98] transition-all">
           {mutation.isPending ? t('sending') : target === 'all' ? t('send_to_all') : target === 'drivers' ? t('send_to_drivers') : t('send_to_customers')}
         </button>
       </div>
 
-      <div className="glass rounded-2xl p-4">
+      <div className="glass rounded-card p-4">
         <h3 className="font-semibold text-sm mb-2">{t('info_title')}</h3>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-400 leading-relaxed">
           {t('broadcast_info')}
         </p>
       </div>

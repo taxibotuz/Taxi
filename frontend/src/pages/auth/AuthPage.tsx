@@ -30,7 +30,6 @@ export default function AuthPage() {
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
-
     const tgUser = getTelegramUser();
     if (tgUser) {
       doLogin(tgUser);
@@ -43,13 +42,9 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const { data } = await authApi.telegramLogin({
-        id: tgUser.id,
-        first_name: tgUser.first_name,
-        last_name: tgUser.last_name,
-        username: tgUser.username,
-        photo_url: tgUser.photo_url,
+        id: tgUser.id, first_name: tgUser.first_name, last_name: tgUser.last_name,
+        username: tgUser.username, photo_url: tgUser.photo_url,
       });
-
       setAuth(data.token, data.user);
       connectSocket(data.token);
       navigate('/', { replace: true });
@@ -67,11 +62,8 @@ export default function AuthPage() {
     try {
       const demoUser = { id: 123456789, first_name: 'Demo', last_name: 'User' };
       const { data } = await authApi.telegramLogin({
-        id: demoUser.id,
-        first_name: demoUser.first_name,
-        last_name: demoUser.last_name,
+        id: demoUser.id, first_name: demoUser.first_name, last_name: demoUser.last_name,
       });
-
       setAuth(data.token, data.user);
       connectSocket(data.token);
       navigate('/', { replace: true });
@@ -84,7 +76,7 @@ export default function AuthPage() {
 
   if (initLoading) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-[#0a0a1a]">
+      <div className="h-full w-full flex items-center justify-center bg-[#0a0a1a] px-6">
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
           <p className="text-gray-400 text-sm">{t('auth_connecting')}</p>
@@ -96,25 +88,22 @@ export default function AuthPage() {
   return (
     <div className="h-full w-full flex flex-col items-center justify-center bg-[#0a0a1a] px-6">
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5 }}
         className="text-center mb-12"
       >
         <motion.div
-          animate={{
-            y: [0, -10, 0],
-            rotate: [0, 5, -5, 0],
-          }}
+          animate={{ y: [0, -8, 0], rotate: [0, 5, -5, 0] }}
           transition={{ duration: 3, repeat: Infinity }}
-          className="text-7xl mb-6"
+          className="text-6xl sm:text-7xl mb-6"
         >
           🚕
         </motion.div>
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary-300 to-primary-500 bg-clip-text text-transparent">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary-300 to-primary-500 bg-clip-text text-transparent">
           {t('auth_taxigo')}
         </h1>
-        <p className="text-gray-400">{t('auth_subtitle')}</p>
+        <p className="text-gray-400 text-sm">{t('auth_subtitle')}</p>
       </motion.div>
 
       <motion.button
@@ -123,7 +112,7 @@ export default function AuthPage() {
         transition={{ delay: 0.3 }}
         onClick={handleBrowserLogin}
         disabled={loading}
-        className="w-full max-w-sm py-4 rounded-2xl bg-primary-500 text-white font-semibold text-lg shadow-lg shadow-primary-500/30 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+        className="w-full max-w-sm py-4 rounded-card bg-primary-500 text-white font-semibold text-lg shadow-btn hover:bg-primary-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
       >
         {loading ? (
           <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -139,7 +128,7 @@ export default function AuthPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="mt-6 text-xs text-gray-500 text-center max-w-xs"
+        className="mt-8 text-xs text-gray-500 text-center max-w-xs leading-relaxed"
       >
         {t('auth_terms')}
       </motion.p>

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { motion } from 'framer-motion';
-import { isInsideDistrict, districtConfig, getBoundary } from '../../services/geo';
+import { isInsideDistrict, getBoundary } from '../../services/geo';
 import { useTranslation } from '../../i18n';
 
 const defaultIcon = L.divIcon({
@@ -120,7 +120,6 @@ export default function MapView({
   destination,
   driverLocation,
   route,
-  height,
   markers,
   onClick,
   showDistrict = true,
@@ -161,17 +160,15 @@ export default function MapView({
         <MapCenterUpdater center={center} />
 
         {showDistrict && (
-          <>
-            <Polygon
-              positions={districtPolygon}
-              pathOptions={{
-                color: '#22c55e',
-                weight: 4,
-                fillColor: '#22c55e',
-                fillOpacity: 0.2,
-              }}
-            />
-          </>
+          <Polygon
+            positions={districtPolygon}
+            pathOptions={{
+              color: '#22c55e',
+              weight: 4,
+              fillColor: '#22c55e',
+              fillOpacity: 0.2,
+            }}
+          />
         )}
 
         {route && route.length >= 2 && (
@@ -204,35 +201,37 @@ export default function MapView({
             {m.label && <Popup>{m.label}</Popup>}
           </Marker>
         ))}
-       </MapContainer>
+      </MapContainer>
 
-     {showETA && (etaSeconds || distanceKm) && (
-       <div className="absolute bottom-4 left-4 right-4 z-[1000] glass rounded-xl p-3 flex justify-between items-center">
-         {distanceKm != null && (
-           <div className="text-center">
-             <div className="text-lg font-bold text-white">{distanceKm.toFixed(1)} km</div>
+      {/* ETA Overlay */}
+      {showETA && (etaSeconds || distanceKm) && (
+        <div className="absolute bottom-4 left-3 right-3 sm:left-4 sm:right-4 z-[1000] glass rounded-card p-3 flex justify-between items-center shadow-lg">
+          {distanceKm != null && (
+            <div className="text-center">
+              <div className="text-base sm:text-lg font-bold text-white">{distanceKm.toFixed(1)} km</div>
               <div className="text-[10px] text-gray-400">{t('distance_label')}</div>
-           </div>
-         )}
-         {etaSeconds != null && (
-           <div className="text-center">
-             <div className="text-lg font-bold text-primary-500">{Math.ceil(etaSeconds / 60)} min</div>
+            </div>
+          )}
+          {etaSeconds != null && (
+            <div className="text-center">
+              <div className="text-base sm:text-lg font-bold text-primary-400">{Math.ceil(etaSeconds / 60)} min</div>
               <div className="text-[10px] text-gray-400">{t('eta_label')}</div>
-           </div>
-         )}
-         {driverLocation && (
-           <div className="text-center">
-             <div className="text-lg font-bold text-green-500">●</div>
+            </div>
+          )}
+          {driverLocation && (
+            <div className="text-center">
+              <div className="text-base sm:text-lg font-bold text-green-500">●</div>
               <div className="text-[10px] text-gray-400">{t('driver_label')}</div>
-           </div>
-         )}
-       </div>
-     )}
+            </div>
+          )}
+        </div>
+      )}
 
-       {showSatelliteToggle && (
+      {/* Satellite Toggle */}
+      {showSatelliteToggle && (
         <button
           onClick={toggleTiles}
-          className="absolute top-4 right-4 z-[1000] px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-md border border-white/10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[1000] px-3 py-1.5 rounded-xl text-[11px] font-semibold shadow-lg backdrop-blur-md border border-white/10 active:scale-95 transition-all"
           style={{
             background: 'rgba(0,0,0,0.6)',
             color: '#fff',
