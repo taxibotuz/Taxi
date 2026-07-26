@@ -17,6 +17,7 @@ router.get('/drivers', authenticate, requireRole('admin'), controller.getDrivers
 router.get('/drivers/:driverId', authenticate, requireRole('admin'), controller.getDriverById.bind(controller));
 router.put('/drivers/:driverId', authenticate, requireRole('admin'), validate(adminSchemas.updateDriver), controller.updateDriver.bind(controller));
 router.delete('/drivers/:driverId', authenticate, requireRole('admin'), controller.deleteDriver.bind(controller));
+router.post('/drivers', authenticate, requireRole('admin'), validate(adminSchemas.addDriver), controller.createDriver.bind(controller));
 
 router.get('/orders', authenticate, requireRole('admin'), controller.getOrders.bind(controller));
 router.get('/orders/:orderId', authenticate, requireRole('admin'), controller.getOrderById.bind(controller));

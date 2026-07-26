@@ -15,13 +15,20 @@ interface DriverForm {
   carColor: string;
   carPlate: string;
   carYear: number;
+  carSeats: number;
   rating: number;
+}
+
+interface AddDriverState {
+  userId: string | null;
+  userTelegramId: string;
+  userInfo: string;
 }
 
 const initialForm: DriverForm = {
   status: 'offline', isApproved: false, isOnline: false, isSuspended: false,
   isBlacklisted: false, commission: 15, carBrand: '', carModel: '',
-  carColor: '', carPlate: '', carYear: 2020, rating: 5,
+  carColor: '', carPlate: '', carYear: 2020, carSeats: 4, rating: 5,
 };
 
 export default function AdminDrivers() {
@@ -30,9 +37,11 @@ export default function AdminDrivers() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
   const [form, setForm] = useState<DriverForm>(initialForm);
   const [showForm, setShowForm] = useState(false);
   const [detail, setDetail] = useState<any>(null);
+  const [addState, setAddState] = useState<AddDriverState>({ userId: null, userTelegramId: '', userInfo: '' });
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'drivers', page, search, statusFilter],
@@ -50,6 +59,20 @@ export default function AdminDrivers() {
     onError: () => toast.error('Failed to update driver'),
   });
 
+  const createMutation = useMutation({
+    mutationFn: (data: any) => adminApi.createDriver(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'drivers'] });
+      toast.success('Driver created');
+      setShowForm(false);
+      setIsAdding(false);
+      setAddState({ userId: null, userTelegramId: '', userInfo: '' });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || 'Failed to create driver');
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteDriver(id),
     onSuccess: () => {
@@ -63,7 +86,16 @@ export default function AdminDrivers() {
   const total = data?.data?.total || 0;
   const pages = data?.data?.pages || 1;
 
+  const openAdd = () => {
+    setIsAdding(true);
+    setEditingId(null);
+    setForm(initialForm);
+    setAddState({ userId: null, userTelegramId: '', userInfo: '' });
+    setShowForm(true);
+  };
+
   const openEdit = (d: any) => {
+    setIsAdding(false);
     setEditingId(d._id);
     setForm({
       status: d.status, isApproved: d.isApproved, isOnline: d.isOnline,
@@ -71,12 +103,30 @@ export default function AdminDrivers() {
       commission: d.commission || 15, carBrand: d.car?.brand || '',
       carModel: d.car?.model || '', carColor: d.car?.color || '',
       carPlate: d.car?.plateNumber || '', carYear: d.car?.year || 2020,
-      rating: d.rating || 5,
+      carSeats: d.car?.seats || 4, rating: d.rating || 5,
     });
     setShowForm(true);
   };
 
   const handleSave = () => {
+    if (isAdding) {
+      if (!addState.userId) { toast.error('Select a user first'); return; }
+      createMutation.mutate({
+        userId: addState.userId,
+        commission: form.commission,
+        isApproved: form.isApproved,
+        isOnline: form.isOnline,
+        car: {
+          brand: form.carBrand,
+          model: form.carModel,
+          color: form.carColor,
+          plateNumber: form.carPlate,
+          year: form.carYear,
+          seats: form.carSeats,
+        },
+      });
+      return;
+    }
     if (!editingId) return;
     updateMutation.mutate({
       id: editingId,
@@ -84,9 +134,28 @@ export default function AdminDrivers() {
         status: form.status, isApproved: form.isApproved, isOnline: form.isOnline,
         isSuspended: form.isSuspended, isBlacklisted: form.isBlacklisted,
         commission: form.commission, rating: form.rating,
-        car: { brand: form.carBrand, model: form.carModel, color: form.carColor, plateNumber: form.carPlate, year: form.carYear },
+        car: { brand: form.carBrand, model: form.carModel, color: form.carColor, plateNumber: form.carPlate, year: form.carYear, seats: form.carSeats },
       },
     });
+  };
+
+  const lookupUser = async () => {
+    const tid = addState.userTelegramId.trim();
+    if (!tid) { toast.error('Enter Telegram ID'); return; }
+    try {
+      const res = await adminApi.getUsers({ search: tid });
+      const users = res.data?.users || [];
+      if (users.length === 0) { toast.error('User not found'); return; }
+      const user = users[0];
+      setAddState(s => ({
+        ...s,
+        userId: user._id,
+        userInfo: `${user.firstName || ''} ${user.lastName || ''} (${user.phone || 'no phone'})`,
+      }));
+      toast.success('User found');
+    } catch {
+      toast.error('Failed to lookup user');
+    }
   };
 
   const viewDetail = async (d: any) => {
@@ -111,7 +180,10 @@ export default function AdminDrivers() {
     <div className="py-4 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">🚗 Drivers</h1>
-        <button onClick={exportCSV} className="text-xs bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20">Export CSV</button>
+        <div className="flex gap-2">
+          <button onClick={openAdd} className="text-xs bg-primary-500 px-3 py-1.5 rounded-lg hover:bg-primary-600 font-semibold">+ Add Driver</button>
+          <button onClick={exportCSV} className="text-xs bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20">Export CSV</button>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -170,8 +242,29 @@ export default function AdminDrivers() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowForm(false)}>
           <div className="bg-[#1a1a2e] rounded-2xl p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-4">Edit Driver</h2>
+            <h2 className="text-lg font-bold mb-4">{isAdding ? 'Add Driver' : 'Edit Driver'}</h2>
             <div className="space-y-3">
+
+              {isAdding && (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-400">Telegram ID</label>
+                    <div className="flex gap-2">
+                      <input value={addState.userTelegramId} onChange={e => setAddState(s => ({ ...s, userTelegramId: e.target.value, userId: null, userInfo: '' }))}
+                        placeholder="Enter Telegram ID"
+                        className="flex-1 bg-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+                      <button onClick={lookupUser} className="bg-primary-500 px-3 py-2 rounded-lg text-sm whitespace-nowrap">Find</button>
+                    </div>
+                  </div>
+                  {addState.userId && (
+                    <div className="text-xs text-green-400 bg-green-500/10 px-3 py-2 rounded-lg">
+                      User: {addState.userInfo}
+                    </div>
+                  )}
+                  <hr className="border-white/10" />
+                </>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="text-xs text-gray-400">Car Brand</label><input value={form.carBrand} onChange={e => setForm({ ...form, carBrand: e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
                 <div><label className="text-xs text-gray-400">Car Model</label><input value={form.carModel} onChange={e => setForm({ ...form, carModel: e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
@@ -179,6 +272,10 @@ export default function AdminDrivers() {
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="text-xs text-gray-400">Color</label><input value={form.carColor} onChange={e => setForm({ ...form, carColor: e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
                 <div><label className="text-xs text-gray-400">Plate</label><input value={form.carPlate} onChange={e => setForm({ ...form, carPlate: e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-xs text-gray-400">Car Year</label><input type="number" value={form.carYear} onChange={e => setForm({ ...form, carYear: +e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="text-xs text-gray-400">Seats</label><input type="number" value={form.carSeats} onChange={e => setForm({ ...form, carSeats: +e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div><label className="text-xs text-gray-400">Commission %</label><input type="number" value={form.commission} onChange={e => setForm({ ...form, commission: +e.target.value })} className="w-full bg-white/10 rounded-lg px-3 py-2 text-sm" /></div>
@@ -192,7 +289,9 @@ export default function AdminDrivers() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl bg-white/10 text-sm">Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-primary-500 text-sm font-semibold">Save</button>
+              <button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="flex-1 py-3 rounded-xl bg-primary-500 text-sm font-semibold disabled:opacity-50">
+                {isAdding ? 'Add Driver' : 'Save'}
+              </button>
             </div>
           </div>
         </div>
@@ -205,10 +304,14 @@ export default function AdminDrivers() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-400">Name</span><span>{detail.userId?.firstName} {detail.userId?.lastName}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Phone</span><span>{detail.userId?.phone || '-'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Telegram</span><span>{detail.userId?.telegramId || '-'}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Car</span><span>{detail.car?.brand} {detail.car?.model} ({detail.car?.color})</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Plate</span><span>{detail.car?.plateNumber}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Seats</span><span>{detail.car?.seats || 4}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Rating</span><span>⭐ {detail.rating}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Status</span><span>{detail.status}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Status</span><span className={detail.isOnline ? 'text-green-400' : 'text-gray-400'}>{detail.isOnline ? 'Online' : 'Offline'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Approved</span><span>{detail.isApproved ? 'Yes' : 'No'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Suspended</span><span>{detail.isSuspended ? 'Yes' : 'No'}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Total Rides</span><span>{detail.totalRides}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Total Earnings</span><span>{detail.totalEarnings?.toLocaleString()} sum</span></div>
             </div>

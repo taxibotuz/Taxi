@@ -282,6 +282,59 @@ export class AdminController {
     }
   }
 
+  async createDriver(req: AuthRequest, res: Response) {
+    try {
+      const { userId, car, commission, isApproved, isOnline } = req.body;
+
+      let targetUser;
+      if (userId) {
+        targetUser = await User.findById(userId);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
+      } else {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+
+      const existing = await Driver.findOne({ userId: targetUser._id });
+      if (existing) return res.status(409).json({ error: 'User is already a driver' });
+
+      if (targetUser.role !== UserRole.DRIVER) {
+        targetUser.role = UserRole.DRIVER;
+        await targetUser.save();
+      }
+
+      const driver = await Driver.create({
+        userId: targetUser._id,
+        car: {
+          brand: car?.brand || '',
+          model: car?.model || '',
+          year: car?.year || 2020,
+          color: car?.color || '',
+          plateNumber: car?.plateNumber || '',
+          seats: car?.seats || 4,
+        },
+        commission: commission ?? 15,
+        isApproved: isApproved ?? false,
+        isOnline: isOnline ?? false,
+      });
+
+      await ActivityLog.create({
+        userId: req.user!._id,
+        action: 'create_driver',
+        entity: 'driver',
+        entityId: driver._id.toString(),
+        description: `Admin created driver for user ${targetUser.firstName} ${targetUser.lastName || ''}`,
+      });
+
+      const populated = await Driver.findById(driver._id)
+        .populate('userId', 'firstName lastName photoUrl phone username telegramId');
+
+      return res.status(201).json({ driver: populated });
+    } catch (error) {
+      logger.error('Create driver error:', error);
+      return res.status(500).json({ error: 'Failed to create driver' });
+    }
+  }
+
   async getOrders(req: AuthRequest, res: Response) {
     try {
       const { status, page = 1, limit = 20, search, paymentMethod, startDate, endDate } = req.query;

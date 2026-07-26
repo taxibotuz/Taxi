@@ -82,6 +82,7 @@ export const adminApi = {
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   getDrivers: (params?: any) => api.get('/admin/drivers', { params }),
   getDriverById: (driverId: string) => api.get(`/admin/drivers/${driverId}`),
+  createDriver: (data: any) => api.post('/admin/drivers', data),
   updateDriver: (id: string, data: any) => api.put(`/admin/drivers/${id}`, data),
   deleteDriver: (driverId: string) => api.delete(`/admin/drivers/${driverId}`),
   getOrders: (params?: any) => api.get('/admin/orders', { params }),

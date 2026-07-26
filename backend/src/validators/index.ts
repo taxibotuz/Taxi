@@ -311,6 +311,24 @@ export const adminSchemas = {
       driverId: mongoId,
     }),
   }),
+  addDriver: z.object({
+    body: z.object({
+      userId: mongoId,
+      commission: z.number().min(0).max(100).optional(),
+      isApproved: z.boolean().optional(),
+      isOnline: z.boolean().optional(),
+      car: z.object({
+        brand: z.string().min(1),
+        model: z.string().min(1),
+        year: z.number().int().min(1900).max(2100),
+        color: z.string().min(1),
+        plateNumber: z.string().min(1),
+        seats: z.number().int().min(1).max(20).optional(),
+      }),
+    }),
+    query: z.object({}).optional(),
+    params: z.object({}).optional(),
+  }),
   list: z.object({
     body: z.object({}).optional(),
     query: z.object({
