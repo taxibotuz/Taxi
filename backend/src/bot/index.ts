@@ -119,7 +119,7 @@ export class TelegramBot {
     });
 
     this.bot.command('status', async (ctx) => {
-      const driver = await Driver.findOne({ userId: ctx.from.id as any }).populate('userId', 'firstName');
+      const driver = await this.getDriverByTelegram(ctx);
       if (!driver) {
         return ctx.reply('You are not registered as a driver.');
       }
@@ -140,14 +140,15 @@ export class TelegramBot {
     });
 
     this.bot.command('offline', async (ctx) => {
-      const driver = await Driver.findOneAndUpdate(
-        { userId: ctx.from.id as any },
+      const driver = await this.getDriverByTelegram(ctx);
+      if (!driver) {
+        return ctx.reply('You are not registered as a driver.');
+      }
+      await Driver.findOneAndUpdate(
+        { _id: driver._id },
         { isOnline: false, status: DriverStatus.OFFLINE }
       );
       await ctx.reply('🔴 You are now offline');
-      if (driver) {
-        await ctx.reply('📍 Live location tracking stopped.');
-      }
     });
 
     this.bot.hears(/location/i, async (ctx: any) => {
@@ -181,7 +182,7 @@ export class TelegramBot {
     });
 
     this.bot.command('history', async (ctx) => {
-      const driver = await Driver.findOne({ userId: ctx.from.id as any });
+      const driver = await this.getDriverByTelegram(ctx);
       if (!driver) return ctx.reply('Not a driver');
 
       const orders = await Order.find({ driverId: driver._id })
@@ -202,7 +203,7 @@ export class TelegramBot {
     });
 
     this.bot.command('balance', async (ctx) => {
-      const driver = await Driver.findOne({ userId: ctx.from.id as any });
+      const driver = await this.getDriverByTelegram(ctx);
       if (!driver) return ctx.reply('Not a driver');
 
       await ctx.reply(
@@ -302,7 +303,7 @@ export class TelegramBot {
     });
 
     this.bot.action('driver_status', async (ctx) => {
-      const driver = await Driver.findOne({ userId: ctx.from.id as any });
+      const driver = await this.getDriverByTelegram(ctx);
       if (!driver) return ctx.reply('Not registered as driver');
 
       await ctx.answerCbQuery();
@@ -524,6 +525,12 @@ export class TelegramBot {
     });
   }
 
+  private async getDriverByTelegram(ctx: any) {
+    const user = await User.findOne({ telegramId: ctx.from.id });
+    if (!user) return null;
+    return Driver.findOne({ userId: user._id });
+  }
+
   private setupHears() {
     this.bot.hears(/online/i, async (ctx) => {
       await this.toggleOnline(ctx);
@@ -534,7 +541,7 @@ export class TelegramBot {
       if (!location) return;
 
       try {
-        const driver = await Driver.findOne({ userId: ctx.from.id as any });
+        const driver = await this.getDriverByTelegram(ctx);
         if (!driver || !driver.isOnline) return;
 
         await Driver.findOneAndUpdate(
@@ -560,8 +567,13 @@ export class TelegramBot {
     });
   }
 
-  private async toggleOnline(ctx: any) {
-     const driver = await Driver.findOne({ userId: ctx.from.id as any });
+   private async toggleOnline(ctx: any) {
+     const user = await User.findOne({ telegramId: ctx.from.id });
+     if (!user) {
+       return ctx.reply('You are not registered. Please start the bot first.');
+     }
+
+     const driver = await Driver.findOne({ userId: user._id });
      if (!driver) {
        return ctx.reply('You are not registered as a driver.\nUse the WebApp to register.');
      }
@@ -578,10 +590,7 @@ export class TelegramBot {
 
      if (driver.isOnline) {
        await ctx.reply(
-         '📍 Please send your current location so customers can track your driver.',
-         Markup.inlineKeyboard([
-           [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
-         ])
+         '📍 Share your location via the driver map in the WebApp so customers can track you.'
        );
      }
    }
