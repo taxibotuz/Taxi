@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { motion } from 'framer-motion';
 import { isInsideDistrict, districtConfig, getBoundary } from '../../services/geo';
@@ -64,12 +64,16 @@ interface MapViewProps {
   pickup?: { lat: number; lng: number } | null;
   destination?: { lat: number; lng: number } | null;
   driverLocation?: { lat: number; lng: number } | null;
+  route?: Array<{ lat: number; lng: number }>;
   height?: string;
   markers?: Array<{ lat: number; lng: number; icon?: string; label?: string }>;
   onClick?: (lat: number, lng: number) => void;
   onDrag?: (lat: number, lng: number) => void;
   showDistrict?: boolean;
   showSatelliteToggle?: boolean;
+  showETA?: boolean;
+  etaSeconds?: number;
+  distanceKm?: number;
 }
 
 const districtPolygon: [number, number][] = getBoundary().map(
@@ -114,12 +118,17 @@ export default function MapView({
   pickup,
   destination,
   driverLocation,
+  route,
+  height,
   markers,
   onClick,
   showDistrict = true,
   showSatelliteToggle = true,
+  showETA = false,
+  etaSeconds,
+  distanceKm,
 }: MapViewProps) {
-  const [tileKey, setTileKey] = useState<'standard' | 'satellite'>('standard');
+  const [tileKey, setTileKey] = useState<'standard' | 'satellite'>('satellite');
   const pickupInside = pickup ? isInsideDistrict(pickup) : null;
   const destInside = destination ? isInsideDistrict(destination) : null;
 
@@ -163,6 +172,18 @@ export default function MapView({
           </>
         )}
 
+        {route && route.length >= 2 && (
+          <Polyline
+            positions={route.map(p => [p.lat, p.lng] as [number, number])}
+            pathOptions={{
+              color: '#3b82f6',
+              weight: 4,
+              opacity: 0.7,
+              dashArray: '10, 10',
+            }}
+          />
+        )}
+
         {pickup && (
           <Marker
             position={[pickup.lat, pickup.lng]}
@@ -181,9 +202,32 @@ export default function MapView({
             {m.label && <Popup>{m.label}</Popup>}
           </Marker>
         ))}
-      </MapContainer>
+       </MapContainer>
 
-      {showSatelliteToggle && (
+     {showETA && (etaSeconds || distanceKm) && (
+       <div className="absolute bottom-4 left-4 right-4 z-[1000] glass rounded-xl p-3 flex justify-between items-center">
+         {distanceKm != null && (
+           <div className="text-center">
+             <div className="text-lg font-bold text-white">{distanceKm.toFixed(1)} km</div>
+             <div className="text-[10px] text-gray-400">Distance</div>
+           </div>
+         )}
+         {etaSeconds != null && (
+           <div className="text-center">
+             <div className="text-lg font-bold text-primary-500">{Math.ceil(etaSeconds / 60)} min</div>
+             <div className="text-[10px] text-gray-400">ETA</div>
+           </div>
+         )}
+         {driverLocation && (
+           <div className="text-center">
+             <div className="text-lg font-bold text-green-500">●</div>
+             <div className="text-[10px] text-gray-400">Driver</div>
+           </div>
+         )}
+       </div>
+     )}
+
+       {showSatelliteToggle && (
         <button
           onClick={toggleTiles}
           className="absolute top-4 right-4 z-[1000] px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-md border border-white/10"

@@ -145,12 +145,20 @@ export default function AdminDrivers() {
     try {
       const res = await adminApi.getUsers({ search: tid });
       const users = res.data?.users || [];
-      if (users.length === 0) { toast.error('User not found'); return; }
+      if (users.length === 0) {
+        const isNum = /^\d+$/.test(tid);
+        if (isNum && tid.length >= 5) {
+          toast.error('This Telegram user has never started the bot.');
+        } else {
+          toast.error('User not found');
+        }
+        return;
+      }
       const user = users[0];
       setAddState(s => ({
         ...s,
         userId: user._id,
-        userInfo: `${user.firstName || ''} ${user.lastName || ''} (${user.phone || 'no phone'})`,
+        userInfo: `${user.firstName || ''} ${user.lastName || ''} (@${user.username || 'no username'}) • ${user.phone || 'no phone'}`,
       }));
       toast.success('User found');
     } catch {
@@ -257,8 +265,11 @@ export default function AdminDrivers() {
                     </div>
                   </div>
                   {addState.userId && (
-                    <div className="text-xs text-green-400 bg-green-500/10 px-3 py-2 rounded-lg">
-                      User: {addState.userInfo}
+                    <div className="text-xs text-green-400 bg-green-500/10 px-3 py-2 rounded-lg flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-xs font-bold">
+                        {(addState.userInfo || '?').charAt(0)}
+                      </div>
+                      {addState.userInfo}
                     </div>
                   )}
                   <hr className="border-white/10" />

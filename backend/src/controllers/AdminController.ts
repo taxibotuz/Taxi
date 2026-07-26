@@ -91,6 +91,10 @@ export class AdminController {
           { username: { $regex: escaped, $options: 'i' } },
           { phone: { $regex: escaped, $options: 'i' } },
         ];
+        const tidNum = Number(search);
+        if (!isNaN(tidNum) && String(tidNum).length >= 5) {
+          query.$or.push({ telegramId: tidNum });
+        }
       }
 
       const users = await User.find(query)

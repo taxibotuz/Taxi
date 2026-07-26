@@ -7,7 +7,7 @@ import { connectSocket, subscribeToRideUpdates, subscribeToDriverLocation } from
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import MapView from '../../components/ui/MapView';
-import { isInsideDistrict, getDefaultCenter, districtConfig } from '../../services/geo';
+import { isInsideDistrict, getDefaultCenter, districtConfig, getBoundary } from '../../services/geo';
 
 export default function RideSearch() {
   const navigate = useNavigate();
@@ -44,6 +44,11 @@ export default function RideSearch() {
       setMapCenter([destination.lat, destination.lng]);
     }
   }, [pickup, destination]);
+
+  const route = pickup && destination ? [pickup, destination] : [];
+  const distance = pickup && destination ? calcDistance(pickup.lat, pickup.lng, destination.lat, destination.lng) : 0;
+  const etaSeconds = distance * 60 * 2;
+  const duration = Math.round(distance * 2 + 3);
 
   useEffect(() => {
     if (!token) return;
@@ -129,8 +134,12 @@ export default function RideSearch() {
           pickup={pickup}
           destination={destination}
           driverLocation={step === 'found' ? driverLocation : null}
+          route={route}
           showDistrict
           showSatelliteToggle
+          showETA
+          etaSeconds={etaSeconds}
+          distanceKm={distance}
         />
 
         <div className="absolute top-4 left-4 z-10 flex gap-2">

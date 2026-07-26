@@ -145,6 +145,39 @@ export class TelegramBot {
         { isOnline: false, status: DriverStatus.OFFLINE }
       );
       await ctx.reply('🔴 You are now offline');
+      if (driver) {
+        await ctx.reply('📍 Live location tracking stopped.');
+      }
+    });
+
+    this.bot.hears(/location/i, async (ctx: any) => {
+      try {
+        const driver = await Driver.findOne({ userId: ctx.from.id as any });
+        if (!driver || !driver.isOnline) return;
+
+        const location = ctx.message?.location;
+        if (!location) return;
+
+        await Driver.findOneAndUpdate(
+          { userId: ctx.from.id as any },
+          {
+            'currentLocation.coordinates': [location.longitude, location.latitude],
+            'currentLocation.updatedAt': new Date(),
+          }
+        );
+
+        await SocketService.emitToUser(
+          driver.userId.toString(),
+          'driver:location',
+          {
+            driverId: driver._id,
+            lat: location.latitude,
+            lng: location.longitude,
+          }
+        );
+      } catch (error) {
+        logger.error('Telegram location error:', error);
+      }
     });
 
     this.bot.command('history', async (ctx) => {
@@ -226,10 +259,16 @@ export class TelegramBot {
       await ctx.reply(
         '🔐 Admin Panel',
         Markup.inlineKeyboard([
-          [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+          [Markup.button.webApp('📊 Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
           [Markup.button.callback('📊 Dashboard', 'admin_dashboard')],
           [Markup.button.callback('👥 Drivers', 'admin_drivers')],
+          [Markup.button.callback('👤 Customers', 'admin_customers')],
           [Markup.button.callback('📦 Orders', 'admin_orders')],
+          [Markup.button.callback('📈 Statistics', 'admin_statistics')],
+          [Markup.button.callback('🟢 Online Drivers', 'admin_online_drivers')],
+          [Markup.button.callback('➕ Add Driver', 'admin_add_driver')],
+          [Markup.button.callback('✅ Approve Driver', 'admin_approve_driver')],
+          [Markup.button.callback('🚫 Suspend Driver', 'admin_suspend_driver')],
           [Markup.button.callback('⚙ Settings', 'admin_settings')],
           [Markup.button.callback('📢 Broadcast', 'admin_broadcast')],
         ])
@@ -385,30 +424,167 @@ export class TelegramBot {
         ])
       );
     });
+
+    this.bot.action('admin_customers', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '👤 Customer Management\n\nOpen the Admin Panel for full customer management.',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_statistics', async (ctx) => {
+      await ctx.answerCbQuery();
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const [totalUsers, totalDrivers, totalOrders, todayOrders] = await Promise.all([
+          User.countDocuments({}),
+          Driver.countDocuments({}),
+          Order.countDocuments({}),
+          Order.countDocuments({ createdAt: { $gte: today } }),
+        ]);
+        await ctx.reply(
+          `📈 Statistics\n\n` +
+          `👤 Total Users: ${totalUsers}\n` +
+          `🚗 Total Drivers: ${totalDrivers}\n` +
+          `📦 Total Orders: ${totalOrders}\n` +
+          `📅 Today's Orders: ${todayOrders}\n\n` +
+          `For detailed statistics, open the Admin Panel.`,
+          Markup.inlineKeyboard([
+            [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+          ])
+        );
+      } catch {
+        await ctx.reply('Failed to load statistics. Open Admin Panel for details.',
+          Markup.inlineKeyboard([
+            [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+          ])
+        );
+      }
+    });
+
+    this.bot.action('admin_online_drivers', async (ctx) => {
+      await ctx.answerCbQuery();
+      try {
+        const onlineDrivers = await Driver.find({ isOnline: true, status: 'online' })
+          .populate('userId', 'firstName lastName username phone')
+          .limit(20)
+          .lean();
+
+        if (onlineDrivers.length === 0) {
+          await ctx.reply('No drivers are currently online.');
+          return;
+        }
+
+        let msg = `🟢 Online Drivers (${onlineDrivers.length}):\n\n`;
+        onlineDrivers.forEach((d: any, i: number) => {
+          const name = `${d.userId?.firstName || ''} ${d.userId?.lastName || ''}`.trim() || d.userId?.username || 'Unknown';
+          msg += `${i + 1}. ${name} • ${d.car?.brand} ${d.car?.model}\n`;
+        });
+
+        await ctx.reply(msg, Markup.inlineKeyboard([
+          [Markup.button.webApp('View All Drivers', `${config.telegram.webappUrl}/admin/drivers`)],
+        ]));
+      } catch {
+        await ctx.reply('Failed to fetch online drivers.');
+      }
+    });
+
+    this.bot.action('admin_add_driver', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '➕ Add Driver\n\nUse the Admin Panel to add a driver:',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_approve_driver', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '✅ Approve Driver\n\nUse the Admin Panel to approve driver applications:',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+        ])
+      );
+    });
+
+    this.bot.action('admin_suspend_driver', async (ctx) => {
+      await ctx.answerCbQuery();
+      await ctx.reply(
+        '🚫 Suspend Driver\n\nUse the Admin Panel to suspend drivers:',
+        Markup.inlineKeyboard([
+          [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+        ])
+      );
+    });
   }
 
   private setupHears() {
     this.bot.hears(/online/i, async (ctx) => {
       await this.toggleOnline(ctx);
     });
+
+    this.bot.on('message', async (ctx: any) => {
+      const location = ctx.update?.message?.location;
+      if (!location) return;
+
+      try {
+        const driver = await Driver.findOne({ userId: ctx.from.id as any });
+        if (!driver || !driver.isOnline) return;
+
+        await Driver.findOneAndUpdate(
+          { userId: ctx.from.id as any },
+          {
+            'currentLocation.coordinates': [location.longitude, location.latitude],
+            'currentLocation.updatedAt': new Date(),
+          }
+        );
+
+        await SocketService.emitToUser(
+          driver.userId.toString(),
+          'driver:location',
+          {
+            driverId: driver._id,
+            lat: location.latitude,
+            lng: location.longitude,
+          }
+        );
+      } catch (error) {
+        logger.error('Telegram location error:', error);
+      }
+    });
   }
 
   private async toggleOnline(ctx: any) {
-    const driver = await Driver.findOne({ userId: ctx.from.id as any });
-    if (!driver) {
-      return ctx.reply('You are not registered as a driver.\nUse the WebApp to register.');
-    }
+     const driver = await Driver.findOne({ userId: ctx.from.id as any });
+     if (!driver) {
+       return ctx.reply('You are not registered as a driver.\nUse the WebApp to register.');
+     }
 
-    if (!driver.isApproved) {
-      return ctx.reply('Your account is pending approval. Please wait for admin confirmation.');
-    }
+     if (!driver.isApproved) {
+       return ctx.reply('Your account is pending approval. Please wait for admin confirmation.');
+     }
 
-    driver.isOnline = !driver.isOnline;
-    driver.status = driver.isOnline ? DriverStatus.ONLINE : DriverStatus.OFFLINE;
-    await driver.save();
+     driver.isOnline = !driver.isOnline;
+     driver.status = driver.isOnline ? DriverStatus.ONLINE : DriverStatus.OFFLINE;
+     await driver.save();
 
-    await ctx.reply(driver.isOnline ? '🟢 You are now online!' : '🔴 You are now offline.');
-  }
+     await ctx.reply(driver.isOnline ? '🟢 You are now online!' : '🔴 You are now offline.');
+
+     if (driver.isOnline) {
+       await ctx.reply(
+         '📍 Please send your current location so customers can track your driver.',
+         Markup.inlineKeyboard([
+           [Markup.button.webApp('Open Admin Panel', `${config.telegram.webappUrl}/admin`)],
+         ])
+       );
+     }
+   }
 
   async sendRideRequest(telegramId: number, rideData: any) {
     try {
