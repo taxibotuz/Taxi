@@ -22,6 +22,7 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminReports from './pages/admin/AdminReports';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminErrorLogs from './pages/admin/AdminErrorLogs';
+import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminRoute from './components/auth/AdminRoute';
 import AuthPage from './pages/auth/AuthPage';
 
@@ -116,6 +117,7 @@ function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="notifications" element={<AdminNotifications />} />
+              <Route path="subscriptions" element={<AdminSubscriptions />} />
               <Route path="error-logs" element={<AdminErrorLogs />} />
             </Route>
           </Route>

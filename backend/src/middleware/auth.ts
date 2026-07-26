@@ -27,15 +27,10 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       role: string;
     };
 
-    logger.info('=== AUTH TRACE: authenticate ===', { decodedTokenRole: decoded.role });
-
     const user = await User.findById(decoded._id).select('-__v');
     if (!user || user.isBanned || !user.isActive) {
-      logger.warn('=== AUTH TRACE: authenticate FAILED ===', { userId: decoded._id, banned: user?.isBanned, active: user?.isActive });
       return res.status(401).json({ error: 'User not found or inactive' });
     }
-
-    logger.info('=== AUTH TRACE: DB user role ===', { dbRole: user.role });
 
     req.user = {
       _id: user._id.toString(),
@@ -54,19 +49,11 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 export const requireRole = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      logger.warn('=== AUTH TRACE: requireRole FAILED - no user ===');
       return res.status(401).json({ error: 'Authentication required' });
     }
     if (!roles.includes(req.user.role)) {
-      logger.warn('=== AUTH TRACE: requireRole BLOCKED ===', {
-        userRole: req.user.role,
-        requiredRoles: roles,
-        telegramId: req.user.telegramId,
-        path: req.path,
-      });
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
-    logger.info('=== AUTH TRACE: requireRole PASSED ===', { userRole: req.user.role, path: req.path });
     next();
   };
 };

@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { RideStatus, PaymentMethod, OrderType } from '../types';
+import './Counter';
 
 export interface IOrder extends Document {
   orderNumber: string;
@@ -130,13 +131,17 @@ orderSchema.index({ status: 1 });
 orderSchema.index({ 'pickup': '2dsphere' });
 orderSchema.index({ 'destination': '2dsphere' });
 
-
 orderSchema.pre('save', async function (next) {
   if (!this.orderNumber) {
+    const Counter = mongoose.model('Counter');
     const date = new Date();
-    const prefix = `TXG${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-    const count = await mongoose.model('Order').countDocuments();
-    this.orderNumber = `${prefix}${String(count + 1).padStart(6, '0')}`;
+    const datePrefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+    const counter = await Counter.findOneAndUpdate(
+      { _id: `order_${datePrefix}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    this.orderNumber = `TXG${datePrefix}${String(counter.seq).padStart(6, '0')}`;
   }
   next();
 });

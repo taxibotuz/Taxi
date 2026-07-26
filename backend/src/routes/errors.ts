@@ -1,11 +1,18 @@
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { ErrorLog } from '../models/ErrorLog';
 import { ErrorReporter } from '../services/ErrorReporter';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/report', async (req: Request, res: Response) => {
+const errorReportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many error reports, please try again later.' },
+});
+
+router.post('/report', errorReportLimiter, async (req: Request, res: Response) => {
   try {
     const { name, message, stack, type, endpoint, method, statusCode, url, userAgent, platform, browser, tgVersion, appVersion } = req.body;
 
@@ -42,6 +49,9 @@ router.get('/admin/logs', authenticate, requireRole('admin'), async (req: Reques
       endDate,
     } = req.query as Record<string, string>;
 
+    const cappedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 50);
+    const cappedPage = Math.max(parseInt(page, 10) || 1, 1);
+
     const query: Record<string, any> = {};
     if (search) query.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -60,15 +70,15 @@ router.get('/admin/logs', authenticate, requireRole('admin'), async (req: Reques
     const total = await ErrorLog.countDocuments(query);
     const errors = await ErrorLog.find(query)
       .sort({ createdAt: -1 })
-      .skip((+page - 1) * +limit)
-      .limit(+limit)
+      .skip((cappedPage - 1) * cappedLimit)
+      .limit(cappedLimit)
       .lean();
 
     return res.json({
       errors,
       total,
-      page: +page,
-      pages: Math.ceil(total / +limit),
+      page: cappedPage,
+      pages: Math.ceil(total / cappedLimit),
     });
   } catch (err) {
     console.error('Error logs fetch failed:', err);

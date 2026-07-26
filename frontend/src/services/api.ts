@@ -115,4 +115,18 @@ export const foodApi = {
     api.get(`/food/restaurants/${restaurantId}/categories/${categoryId}/products`),
 };
 
+export const subscriptionApi = {
+  getPlans: () => api.get('/subscriptions/plans'),
+  getMySubscription: () => api.get('/subscriptions/my'),
+  purchase: (data: { planId: string; paymentMethod?: string }) => api.post('/subscriptions/purchase', data),
+  adminGetPlans: () => api.get('/subscriptions/admin/plans'),
+  adminCreatePlan: (data: any) => api.post('/subscriptions/admin/plans', data),
+  adminUpdatePlan: (planId: string, data: any) => api.put(`/subscriptions/admin/plans/${planId}`, data),
+  adminDeletePlan: (planId: string) => api.delete(`/subscriptions/admin/plans/${planId}`),
+  adminGrant: (data: { driverId: string; planId: string; durationDays?: number; paymentAmount?: number }) =>
+    api.post('/subscriptions/admin/grant', data),
+  adminGetActive: (params?: any) => api.get('/subscriptions/admin/active', { params }),
+  adminGetDriverSubscriptions: (driverId: string) => api.get(`/subscriptions/admin/driver/${driverId}`),
+};
+
 export default api;

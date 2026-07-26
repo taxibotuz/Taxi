@@ -378,6 +378,24 @@ const translations: Record<Language, Record<string, string>> = {
     something_wrong: 'Xatolik yuz berdi',
     unexpected_error: 'Kutilmagan xatolik yuz berdi',
     try_again: 'Qaytadan urinish',
+
+    // Subscriptions
+    subscription: 'Obuna',
+    subscription_plans: 'Obuna rejalari',
+    subscription_active: 'Obuna faol',
+    subscription_expired: 'Obuna muddati tugagan',
+    subscription_expires: 'Obuna muddati tugaydi',
+    subscription_purchase: 'Obuna sotib olish',
+    subscription_renew: 'Obunani yangilash',
+    subscription_duration: 'Davomiyligi',
+    subscription_days: 'kun',
+    subscription_price: 'Narxi',
+    subscription_features: 'Imtiyozlar',
+    subscription_no_active: 'Faol obuna yo\'q',
+    subscription_expiry_warning: 'Obuna muddati {days} kunda tugaydi',
+    subscription_expired_warning: 'Obuna muddatingiz tugagan! Online bo\'lish uchun obunani yangilang.',
+    manage_subscriptions: 'Obunalarni boshqarish',
+    grant_subscription: 'Obuna berish',
   },
 
   ru: {
@@ -757,6 +775,24 @@ const translations: Record<Language, Record<string, string>> = {
     something_wrong: 'Что-то пошло не так',
     unexpected_error: 'Произошла непредвиденная ошибка',
     try_again: 'Попробовать снова',
+
+    // Subscriptions
+    subscription: 'Подписка',
+    subscription_plans: 'Планы подписок',
+    subscription_active: 'Подписка активна',
+    subscription_expired: 'Срок подписки истёк',
+    subscription_expires: 'Срок подписки истекает',
+    subscription_purchase: 'Купить подписку',
+    subscription_renew: 'Продлить подписку',
+    subscription_duration: 'Длительность',
+    subscription_days: 'дней',
+    subscription_price: 'Цена',
+    subscription_features: 'Преимущества',
+    subscription_no_active: 'Нет активной подписки',
+    subscription_expiry_warning: 'Срок подписки истекает через {days} дней',
+    subscription_expired_warning: 'Срок вашей подписки истёк! Продлите подписку для выхода онлайн.',
+    manage_subscriptions: 'Управление подписками',
+    grant_subscription: 'Предоставить подписку',
   },
 };
 

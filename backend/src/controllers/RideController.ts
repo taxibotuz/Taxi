@@ -170,6 +170,8 @@ export class RideController {
   async getOrders(req: AuthRequest, res: Response) {
     try {
       const { status, page = 1, limit = 20 } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
       const query: any = {};
 
       if (req.user!.role === 'customer') {
@@ -185,12 +187,12 @@ export class RideController {
         .populate('customerId', 'firstName lastName photoUrl phone')
         .populate('driverId', 'car rating')
         .sort({ createdAt: -1 })
-        .skip((+page - 1) * +limit)
-        .limit(+limit);
+        .skip((cappedPage - 1) * cappedLimit)
+        .limit(cappedLimit);
 
       const total = await Order.countDocuments(query);
 
-      return res.json({ orders, total, page: +page, pages: Math.ceil(total / +limit) });
+      return res.json({ orders, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
     } catch (error) {
       logger.error('Get orders error:', error);
       return res.status(500).json({ error: 'Failed to get orders' });
@@ -258,6 +260,29 @@ export class RideController {
 
       if (!order) {
         return res.status(404).json({ error: 'Order not found' });
+      }
+
+      const userRole = req.user!.role;
+      const userId = req.user!._id;
+
+      if (userRole === 'customer') {
+        const isCustomer = order.customerId.toString() === userId;
+        if (!isCustomer) {
+          return res.status(403).json({ error: 'Not authorized' });
+        }
+        const allowedStatuses = ['cancelled'];
+        if (!allowedStatuses.includes(status)) {
+          return res.status(403).json({ error: 'Customers can only cancel orders' });
+        }
+      } else if (userRole === 'driver') {
+        const driver = await Driver.findOne({ userId });
+        if (!driver || !order.driverId || order.driverId.toString() !== driver._id.toString()) {
+          return res.status(403).json({ error: 'Not authorized' });
+        }
+        const allowedStatuses = ['arrived', 'in_progress', 'completed', 'cancelled'];
+        if (!allowedStatuses.includes(status)) {
+          return res.status(403).json({ error: 'Invalid status transition for driver' });
+        }
       }
 
       order.status = status;

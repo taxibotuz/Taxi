@@ -80,6 +80,8 @@ export class AdminController {
   async getUsers(req: AuthRequest, res: Response) {
     try {
       const { role, page = 1, limit = 20, search } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
       const query: any = {};
 
       if (role) query.role = role;
@@ -99,12 +101,12 @@ export class AdminController {
 
       const users = await User.find(query)
         .sort({ createdAt: -1 })
-        .skip((+page - 1) * +limit)
-        .limit(+limit);
+        .skip((cappedPage - 1) * cappedLimit)
+        .limit(cappedLimit);
 
       const total = await User.countDocuments(query);
 
-      return res.json({ users, total, page: +page, pages: Math.ceil(total / +limit) });
+      return res.json({ users, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
     } catch (error) {
       logger.error('Get users error:', error);
       return res.status(500).json({ error: 'Failed to get users' });
@@ -169,6 +171,8 @@ export class AdminController {
   async getDrivers(req: AuthRequest, res: Response) {
     try {
       const { page = 1, limit = 20, status, search, isApproved } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
       const query: any = {};
       if (status) query.status = status;
       if (isApproved !== undefined) query.isApproved = isApproved === 'true';
@@ -191,12 +195,12 @@ export class AdminController {
       const drivers = await Driver.find(query)
         .populate('userId', 'firstName lastName photoUrl phone username')
         .sort({ createdAt: -1 })
-        .skip((+page - 1) * +limit)
-        .limit(+limit);
+        .skip((cappedPage - 1) * cappedLimit)
+        .limit(cappedLimit);
 
       const total = await Driver.countDocuments(query);
 
-      return res.json({ drivers, total, page: +page, pages: Math.ceil(total / +limit) });
+      return res.json({ drivers, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
     } catch (error) {
       logger.error('Get drivers error:', error);
       return res.status(500).json({ error: 'Failed to get drivers' });
@@ -232,6 +236,8 @@ export class AdminController {
     try {
       const driver = await Driver.findByIdAndDelete(req.params.driverId);
       if (!driver) return res.status(404).json({ error: 'Driver not found' });
+
+      await User.findByIdAndUpdate(driver.userId, { role: UserRole.CUSTOMER });
 
       await ActivityLog.create({
         userId: req.user!._id,
@@ -343,6 +349,8 @@ export class AdminController {
   async getOrders(req: AuthRequest, res: Response) {
     try {
       const { status, page = 1, limit = 20, search, paymentMethod, startDate, endDate } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
       const query: any = {};
       if (status) query.status = status;
       if (paymentMethod) query.paymentMethod = paymentMethod;
@@ -377,12 +385,12 @@ export class AdminController {
         .populate('customerId', 'firstName lastName phone')
         .populate('driverId', 'car rating')
         .sort({ createdAt: -1 })
-        .skip((+page - 1) * +limit)
-        .limit(+limit);
+        .skip((cappedPage - 1) * cappedLimit)
+        .limit(cappedLimit);
 
       const total = await Order.countDocuments(query);
 
-      return res.json({ orders, total, page: +page, pages: Math.ceil(total / +limit) });
+      return res.json({ orders, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
     } catch (error) {
       logger.error('Get orders error:', error);
       return res.status(500).json({ error: 'Failed to get orders' });
@@ -659,13 +667,15 @@ export class AdminController {
   async getActivityLogs(req: AuthRequest, res: Response) {
     try {
       const { page = 1, limit = 50 } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 50, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
       const logs = await ActivityLog.find()
         .populate('userId', 'firstName lastName')
         .sort({ createdAt: -1 })
-        .skip((+page - 1) * +limit)
-        .limit(+limit);
+        .skip((cappedPage - 1) * cappedLimit)
+        .limit(cappedLimit);
       const total = await ActivityLog.countDocuments();
-      return res.json({ logs, total, page: +page, pages: Math.ceil(total / +limit) });
+      return res.json({ logs, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
     } catch (error) {
       logger.error('Get logs error:', error);
       return res.status(500).json({ error: 'Failed to get logs' });

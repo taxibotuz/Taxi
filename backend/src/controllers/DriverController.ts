@@ -25,11 +25,23 @@ export class DriverController {
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
 
-      const [todayRides, weeklyRides, monthlyRides, activeRide] = await Promise.all([
+      const [todayRides, weeklyRides, monthlyRides, activeRide, todayEarningsAgg, weeklyEarningsAgg, monthlyEarningsAgg] = await Promise.all([
         Order.countDocuments({ driverId: driver._id, createdAt: { $gte: todayStart } }),
         Order.countDocuments({ driverId: driver._id, createdAt: { $gte: weekStart } }),
         Order.countDocuments({ driverId: driver._id, createdAt: { $gte: monthStart } }),
         Order.findOne({ driverId: driver._id, status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS] } }),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: todayStart } } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: weekStart } } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
       ]);
 
       return res.json({
@@ -38,9 +50,9 @@ export class DriverController {
           todayRides,
           weeklyRides,
           monthlyRides,
-          todayEarnings: driver.todayEarnings,
-          weeklyEarnings: driver.weeklyEarnings,
-          monthlyEarnings: driver.monthlyEarnings,
+          todayEarnings: todayEarningsAgg[0]?.total || 0,
+          weeklyEarnings: weeklyEarningsAgg[0]?.total || 0,
+          monthlyEarnings: monthlyEarningsAgg[0]?.total || 0,
           totalRides: driver.totalRides,
           totalEarnings: driver.totalEarnings,
           rating: driver.rating,
@@ -62,6 +74,14 @@ export class DriverController {
 
       if (!driver.isApproved) {
         return res.status(403).json({ error: 'Driver not approved yet' });
+      }
+
+      if (driver.subscription && driver.subscription.active && driver.subscription.expiresAt) {
+        if (new Date(driver.subscription.expiresAt) <= new Date()) {
+          driver.subscription.active = false;
+          await driver.save();
+          return res.status(403).json({ error: 'Subscription expired. Please renew to go online.' });
+        }
       }
 
       driver.isOnline = !driver.isOnline;
@@ -110,15 +130,17 @@ export class DriverController {
       }
 
       const { page = 1, limit = 20 } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
       const orders = await Order.find({ driverId: driver._id })
         .populate('customerId', 'firstName lastName photoUrl')
         .sort({ createdAt: -1 })
-        .skip((+page - 1) * +limit)
-        .limit(+limit);
+        .skip((cappedPage - 1) * cappedLimit)
+        .limit(cappedLimit);
 
       const total = await Order.countDocuments({ driverId: driver._id });
 
-      return res.json({ orders, total, page: +page, pages: Math.ceil(total / +limit) });
+      return res.json({ orders, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
     } catch (error) {
       logger.error('Ride history error:', error);
       return res.status(500).json({ error: 'Failed to get history' });

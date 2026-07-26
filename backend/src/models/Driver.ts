@@ -34,6 +34,11 @@ export interface IDriver extends Document {
   isAvailable: boolean;
   isSuspended: boolean;
   isBlacklisted: boolean;
+  subscription: {
+    active: boolean;
+    planId?: mongoose.Types.ObjectId;
+    expiresAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +81,11 @@ const driverSchema = new Schema<IDriver>(
     isAvailable: { type: Boolean, default: false },
     isSuspended: { type: Boolean, default: false },
     isBlacklisted: { type: Boolean, default: false },
+    subscription: {
+      active: { type: Boolean, default: false },
+      planId: { type: Schema.Types.ObjectId, ref: 'SubscriptionPlan' },
+      expiresAt: { type: Date },
+    },
   },
   { timestamps: true }
 );
