@@ -71,7 +71,7 @@ function MapCenterUpdater({ center }: { center?: [number, number] }) {
 }
 
 export default function MapView({
-  center = [41.2995, 69.2401],
+  center = [41.55, 61.00],
   zoom = 13,
   pickup,
   destination,

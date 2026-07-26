@@ -48,6 +48,22 @@ export const config = {
     opencageKey: process.env.OPENCAGE_API_KEY || '',
   },
 
+  district: {
+    name: "To'rtko'l tumani",
+    center: { lat: 41.55, lng: 61.00 },
+    boundary: [
+      { lat: 41.85, lng: 60.40 },
+      { lat: 41.88, lng: 60.80 },
+      { lat: 41.85, lng: 61.20 },
+      { lat: 41.80, lng: 61.55 },
+      { lat: 41.55, lng: 61.60 },
+      { lat: 41.30, lng: 61.50 },
+      { lat: 41.25, lng: 61.00 },
+      { lat: 41.28, lng: 60.45 },
+      { lat: 41.50, lng: 60.35 },
+    ],
+  },
+
   defaults: {
     searchRadius: parseInt(process.env.DEFAULT_SEARCH_RADIUS || '15', 10),
     searchTimeout: parseInt(process.env.DEFAULT_SEARCH_TIMEOUT || '15', 10),

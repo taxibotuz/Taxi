@@ -5,6 +5,7 @@ import { Driver, IDriver } from '../models/Driver';
 import { User } from '../models/User';
 import { PricingService } from '../services/PricingService';
 import { DriverMatchingService } from '../services/DriverMatchingService';
+import { GeoService } from '../services/GeoService';
 import { SocketService } from '../sockets/SocketService';
 import { TelegramBot } from '../bot';
 import { ServiceAreaService } from '../services/ServiceAreaService';
@@ -42,6 +43,16 @@ export class RideController {
       if (!destCheck.allowed) {
         const userLang = (await User.findById(req.user!._id).select('language').lean())?.language || 'uz';
         return res.status(400).json({ error: ServiceAreaService.errorMessage(userLang) });
+      }
+
+      const geoPickup = GeoService.validateLocation(pickupLat, pickupLng);
+      if (!geoPickup.valid) {
+        return res.status(400).json({ error: geoPickup.error });
+      }
+
+      const geoDest = GeoService.validateLocation(destLat, destLng);
+      if (!geoDest.valid) {
+        return res.status(400).json({ error: geoDest.error });
       }
 
       const now = new Date();

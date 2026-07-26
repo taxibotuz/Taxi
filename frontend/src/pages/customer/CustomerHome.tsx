@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MapView from '../../components/ui/MapView';
 import { useRideStore } from '../../store/rideStore';
 import { ridesApi } from '../../services/api';
+import { isInsideDistrict, getDefaultCenter } from '../../services/geo';
+import toast from 'react-hot-toast';
 
 export default function CustomerHome() {
   const navigate = useNavigate();
@@ -12,7 +14,7 @@ export default function CustomerHome() {
   const [showDestSearch, setShowDestSearch] = useState(false);
   const [pickupText, setPickupText] = useState('');
   const [destText, setDestText] = useState('');
-  const [userLocation, setUserLocation] = useState<[number, number]>([41.2995, 69.2401]);
+  const [userLocation, setUserLocation] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -20,14 +22,29 @@ export default function CustomerHome() {
         (pos) => {
           const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
           setUserLocation(loc);
-          setPickup({ lat: loc[0], lng: loc[1], address: 'Current Location' });
+          const point = { lat: loc[0], lng: loc[1] };
+          if (isInsideDistrict(point)) {
+            setPickup({ lat: loc[0], lng: loc[1], address: 'Current Location' });
+          } else {
+            toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+            setPickup({ lat: getDefaultCenter().lat, lng: getDefaultCenter().lng, address: "To'rtko'l tumani markazi" });
+          }
         },
-        () => {}
+        () => {
+          setPickup({ lat: getDefaultCenter().lat, lng: getDefaultCenter().lng, address: "To'rtko'l tumani markazi" });
+        }
       );
+    } else {
+      setPickup({ lat: getDefaultCenter().lat, lng: getDefaultCenter().lng, address: "To'rtko'l tumani markazi" });
     }
   }, []);
 
   const handleMapClick = (lat: number, lng: number) => {
+    const point = { lat, lng };
+    if (!isInsideDistrict(point)) {
+      toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+      return;
+    }
     if (showPickupSearch) {
       setPickup({ lat, lng, address: `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
       setPickupText(`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`);

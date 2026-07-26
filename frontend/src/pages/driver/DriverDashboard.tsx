@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { driversApi } from '../../services/api';
+import { isInsideDistrict } from '../../services/geo';
 import toast from 'react-hot-toast';
 
 export default function DriverDashboard() {
@@ -23,6 +24,12 @@ export default function DriverDashboard() {
   const driver = data?.data?.driver;
   const stats = data?.data?.stats;
   const activeRide = data?.data?.activeRide;
+
+  const driverLocation = driver?.currentLocation?.coordinates
+    ? { lat: driver.currentLocation.coordinates[1], lng: driver.currentLocation.coordinates[0] }
+    : null;
+
+  const isInDistrict = driverLocation ? isInsideDistrict(driverLocation) : true;
 
   const StatCard = ({ label, value, icon }: { label: string; value: string | number; icon: string }) => (
     <motion.div
@@ -54,16 +61,22 @@ export default function DriverDashboard() {
         className="flex items-center justify-between"
       >
         <h1 className="text-2xl font-bold">Driver Panel</h1>
-        <button
-          onClick={() => toggleMutation.mutate()}
-          className={`px-6 py-2 rounded-xl font-semibold text-sm transition-all ${
-            driver?.isOnline
-              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-              : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-          }`}
-        >
-          {driver?.isOnline ? '🟢 Online' : '🔴 Offline'}
-        </button>
+        {isInDistrict ? (
+          <button
+            onClick={() => toggleMutation.mutate()}
+            className={`px-6 py-2 rounded-xl font-semibold text-sm transition-all ${
+              driver?.isOnline
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+            }`}
+          >
+            {driver?.isOnline ? '🟢 Online' : '🔴 Offline'}
+          </button>
+        ) : (
+          <div className="px-4 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-medium text-center">
+            To'rtko'l tumanidan tashqarida
+          </div>
+        )}
       </motion.div>
 
       {activeRide && (

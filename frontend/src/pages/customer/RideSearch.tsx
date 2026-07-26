@@ -7,6 +7,7 @@ import { connectSocket, subscribeToRideUpdates, subscribeToDriverLocation } from
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import MapView from '../../components/ui/MapView';
+import { isInsideDistrict, getDefaultCenter, districtConfig } from '../../services/geo';
 
 export default function RideSearch() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function RideSearch() {
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [offeredPrice, setOfferedPrice] = useState<number>(0);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
 
   useEffect(() => {
     if (!pickup || !destination) {
@@ -24,13 +26,21 @@ export default function RideSearch() {
     }
 
     const distance = calcDistance(pickup.lat, pickup.lng, destination.lat, destination.lng);
-    const duration = Math.round(distance * 2 + 3); // 3 min base + 2 min/km (~30 km/h avg)
+    const duration = Math.round(distance * 2 + 3);
 
     ridesApi.estimatePrice({ distance, duration }).then(({ data }) => {
       setPriceEstimate(data.price);
       setOfferedPrice(data.price.total);
     });
   }, []);
+
+  useEffect(() => {
+    if (pickup) {
+      setMapCenter([pickup.lat, pickup.lng]);
+    } else if (destination) {
+      setMapCenter([destination.lat, destination.lng]);
+    }
+  }, [pickup, destination]);
 
   useEffect(() => {
     if (!token) return;
@@ -60,6 +70,16 @@ export default function RideSearch() {
 
   const handleOrderRide = async () => {
     if (!pickup || !destination || !priceEstimate) return;
+
+    if (!isInsideDistrict(pickup)) {
+      toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+      return;
+    }
+
+    if (!isInsideDistrict(destination)) {
+      toast.error("TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.");
+      return;
+    }
 
     const distance = calcDistance(pickup.lat, pickup.lng, destination.lat, destination.lng);
     const duration = Math.round(distance * 2 + 3);
@@ -101,7 +121,8 @@ export default function RideSearch() {
     <div className="h-full flex flex-col bg-[#0a0a1a]">
       <div className="relative flex-1">
         <MapView
-          center={pickup ? [pickup.lat, pickup.lng] : undefined}
+          center={mapCenter}
+          zoom={districtConfig.zoom}
           pickup={pickup}
           destination={destination}
           driverLocation={step === 'found' ? driverLocation : null}

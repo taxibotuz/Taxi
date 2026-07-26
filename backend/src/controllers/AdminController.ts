@@ -420,7 +420,7 @@ export class AdminController {
 
   async updateSettings(req: AuthRequest, res: Response) {
     try {
-      const allowedKeys = ['pricing', 'search', 'driver', 'features', 'payment', 'maintenance', 'notifications', 'general'];
+      const allowedKeys = ['pricing', 'search', 'driver', 'features', 'payment', 'district', 'maintenance', 'notifications', 'general'];
       const updates: Record<string, any> = {};
       for (const key of allowedKeys) {
         if (key in req.body) updates[key] = req.body[key];

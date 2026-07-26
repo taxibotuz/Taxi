@@ -38,6 +38,13 @@ export interface ISettings extends Document {
     walletEnabled: boolean;
     cashEnabled: boolean;
   };
+  district: {
+    enabled: boolean;
+    name: string;
+    centerLat: number;
+    centerLng: number;
+    boundary: Array<{ lat: number; lng: number }>;
+  };
   maintenance: {
     isEnabled: boolean;
     message: string;
@@ -97,6 +104,26 @@ const settingsSchema = new Schema<ISettings>({
     },
     walletEnabled: { type: Boolean, default: true },
     cashEnabled: { type: Boolean, default: true },
+  },
+  district: {
+    enabled: { type: Boolean, default: true },
+    name: { type: String, default: "To'rtko'l tumani" },
+    centerLat: { type: Number, default: 41.55 },
+    centerLng: { type: Number, default: 61.00 },
+    boundary: {
+      type: [{ lat: Number, lng: Number }],
+      default: [
+        { lat: 41.85, lng: 60.40 },
+        { lat: 41.88, lng: 60.80 },
+        { lat: 41.85, lng: 61.20 },
+        { lat: 41.80, lng: 61.55 },
+        { lat: 41.55, lng: 61.60 },
+        { lat: 41.30, lng: 61.50 },
+        { lat: 41.25, lng: 61.00 },
+        { lat: 41.28, lng: 60.45 },
+        { lat: 41.50, lng: 60.35 },
+      ],
+    },
   },
   maintenance: {
     isEnabled: { type: Boolean, default: false },

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Driver, IDriver } from '../models/Driver';
 import { Settings } from '../models/Settings';
 import { RedisService } from './RedisService';
+import { GeoService } from './GeoService';
 import { logger } from '../config/logger';
 
 export class DriverMatchingService {
@@ -30,6 +31,35 @@ export class DriverMatchingService {
     const maxRadius = radiusKm || settings?.search.maxRadius || 15;
     const maxDrivers = limit || settings?.search.maxDriversPerSearch || 10;
 
+    const district = settings?.district || { enabled: true, boundary: [] };
+
+    const polygonCoords = district.enabled && district.boundary.length >= 3
+      ? [
+          ...district.boundary.map((p: { lat: number; lng: number }) => [p.lng, p.lat]),
+          [district.boundary[0].lng, district.boundary[0].lat],
+        ]
+      : null;
+
+    const matchStage: Record<string, any> = {
+      status: 'online',
+      isOnline: true,
+      isAvailable: true,
+      isApproved: true,
+      isSuspended: false,
+      isBlacklisted: false,
+    };
+
+    if (polygonCoords) {
+      matchStage.currentLocation = {
+        $geoWithin: {
+          $geometry: {
+            type: 'Polygon',
+            coordinates: [polygonCoords],
+          },
+        },
+      };
+    }
+
     const drivers = await Driver.aggregate([
       {
         $geoNear: {
@@ -39,16 +69,7 @@ export class DriverMatchingService {
           spherical: true,
         },
       },
-      {
-        $match: {
-          status: 'online',
-          isOnline: true,
-          isAvailable: true,
-          isApproved: true,
-          isSuspended: false,
-          isBlacklisted: false,
-        },
-      },
+      { $match: matchStage },
       { $sort: { distance: 1 } },
       { $limit: maxDrivers },
       {
