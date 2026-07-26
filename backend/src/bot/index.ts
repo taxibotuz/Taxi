@@ -8,6 +8,8 @@ import { Settings } from '../models/Settings';
 import { UserRole, RideStatus, DriverStatus } from '../types';
 import { DriverMatchingService } from '../services/DriverMatchingService';
 import { SocketService } from '../sockets/SocketService';
+import { ErrorReporter } from '../services/ErrorReporter';
+import { ErrorLog } from '../models/ErrorLog';
 import { logger } from '../config/logger';
 
 const translations: Record<string, Record<string, string>> = {
@@ -38,6 +40,7 @@ export class TelegramBot {
     this.setupCommands();
     this.setupActions();
     this.setupHears();
+    this.setupErrorHandler();
   }
 
   static getInstance(): TelegramBot {
@@ -176,6 +179,35 @@ export class TelegramBot {
         `Monthly: ${driver.monthlyEarnings.toLocaleString()} sum\n` +
         `Total: ${driver.totalEarnings.toLocaleString()} sum`
       );
+    });
+
+    this.bot.command('errors', async (ctx) => {
+      if (!config.telegram.adminIds.includes(ctx.from.id)) {
+        return ctx.reply('Unauthorized');
+      }
+      try {
+        const errors = await ErrorLog.find().sort({ createdAt: -1 }).limit(50).lean();
+        if (!errors.length) {
+          return ctx.reply('No errors recorded.');
+        }
+        let msg = `📋 *Last ${errors.length} Errors:*\n\n`;
+        for (const e of errors) {
+          const date = new Date(e.createdAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+          msg += `*${e.name}* | ${e.severity} | x${e.count}\n`;
+          msg += `\`${e.message.substring(0, 100)}\`\n`;
+          msg += `${date} | ${e.method || '?'} ${e.endpoint || 'N/A'}\n`;
+          msg += `Status: \`${e.statusCode || '-'}\` | Resolved: ${e.resolved ? '✅' : '❌'}\n`;
+          msg += `ID: \`${e._id}\`\n\n`;
+          if (msg.length > 3800) {
+            msg += `... and ${errors.length - errors.indexOf(e) - 1} more`;
+            break;
+          }
+        }
+        await ctx.reply(msg, { parse_mode: 'Markdown' } as any);
+      } catch (error) {
+        logger.error('Errors command error:', error);
+        await ctx.reply('Failed to fetch errors');
+      }
     });
 
     this.bot.command('support', async (ctx) => {
@@ -348,6 +380,13 @@ export class TelegramBot {
     } catch (error) {
       logger.error('Send ride request error:', error);
     }
+  }
+
+  private setupErrorHandler() {
+    this.bot.catch((err: any) => {
+      logger.error('Telegram bot error:', err);
+      ErrorReporter.report(err instanceof Error ? err : new Error(String(err)), { type: 'telegram_bot' });
+    });
   }
 
   async sendNotification(telegramId: number, message: string) {

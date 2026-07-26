@@ -9,6 +9,7 @@ const adminTabs = [
   { path: '/admin/reports', label: 'Reports', icon: '📈' },
   { path: '/admin/notifications', label: 'Notify', icon: '📢' },
   { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/admin/error-logs', label: 'Error Logs', icon: '🛡️' },
 ];
 
 export default function AdminLayout() {

@@ -11,6 +11,7 @@ import { logger } from './config/logger';
 import { SocketService } from './sockets/SocketService';
 import { TelegramBot } from './bot';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { ErrorReporter } from './services/ErrorReporter';
 import { RedisService } from './services/RedisService';
 import { Settings } from './models/Settings';
 
@@ -22,14 +23,20 @@ import reviewRoutes from './routes/reviews';
 import promoRoutes from './routes/promocodes';
 import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
+import errorRoutes from './routes/errors';
 import foodRoutes from './routes/food';
+
+ErrorReporter.init();
 
 process.on('unhandledRejection', (reason) => {
   logger.error('UNHANDLED REJECTION:', reason);
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  ErrorReporter.report(err, { type: 'unhandled_rejection' });
 });
 
 process.on('uncaughtException', (err) => {
   logger.error('UNCAUGHT EXCEPTION:', err);
+  ErrorReporter.report(err, { type: 'uncaught_exception' });
   process.exit(1);
 });
 
@@ -82,6 +89,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/promocodes', promoRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/errors', errorRoutes);
 app.use('/api/food', foodRoutes);
 
 app.get('/health', (_req, res) => {
@@ -166,6 +174,7 @@ function validateEnv(): void {
 
 mongoose.connection.on('error', (err) => {
   logger.error('MongoDB connection error:', err);
+  ErrorReporter.report(err instanceof Error ? err : new Error(String(err)), { type: 'mongodb' });
 });
 
 mongoose.connection.on('disconnected', () => {

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { frontendErrorReporter } from './errorReporter';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -19,6 +20,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status >= 500) {
+      frontendErrorReporter.captureRequestError(error);
+    }
     if (error.response?.status === 401) {
       useAuthStore.getState().logout();
     }
@@ -99,6 +103,8 @@ export const adminApi = {
   getReports: (params?: any) => api.get('/admin/reports', { params }),
   getLogs: (params?: any) => api.get('/admin/logs', { params }),
   sendBroadcast: (data: any) => api.post('/admin/notifications/broadcast', data),
+  getErrorLogs: (params?: any) => api.get('/errors/admin/logs', { params }),
+  resolveErrorLog: (id: string) => api.put(`/errors/admin/logs/${id}/resolve`),
 };
 
 export const foodApi = {

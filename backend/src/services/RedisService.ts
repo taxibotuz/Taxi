@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import { config } from '../config';
 import { logger } from '../config/logger';
+import { ErrorReporter } from './ErrorReporter';
 
 export class RedisService {
   private static _instance: RedisService;
@@ -14,9 +15,9 @@ export class RedisService {
     this.pubClient = new Redis(config.redis.url, { lazyConnect: true, maxRetriesPerRequest: null });
     this.subClient = new Redis(config.redis.url, { lazyConnect: true, maxRetriesPerRequest: null });
 
-    this.client.on('error', (err) => logger.error('Redis client error:', err));
-    this.pubClient.on('error', (err) => logger.error('Redis pubClient error:', err));
-    this.subClient.on('error', (err) => logger.error('Redis subClient error:', err));
+    this.client.on('error', (err) => { logger.error('Redis client error:', err); ErrorReporter.report(err instanceof Error ? err : new Error(String(err)), { type: 'redis', metadata: { client: 'main' } }); });
+    this.pubClient.on('error', (err) => { logger.error('Redis pubClient error:', err); ErrorReporter.report(err instanceof Error ? err : new Error(String(err)), { type: 'redis', metadata: { client: 'pub' } }); });
+    this.subClient.on('error', (err) => { logger.error('Redis subClient error:', err); ErrorReporter.report(err instanceof Error ? err : new Error(String(err)), { type: 'redis', metadata: { client: 'sub' } }); });
   }
 
   static getInstance(): RedisService {

@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { logger } from '../config/logger';
+import { ErrorReporter } from '../services/ErrorReporter';
 import { User } from '../models/User';
 import { Driver } from '../models/Driver';
 import { Order } from '../models/Order';
@@ -132,6 +133,11 @@ export class SocketService {
         if (idx > -1) sockets.splice(idx, 1);
         if (sockets.length === 0) this.userSockets.delete(userId);
       });
+    });
+
+    this.io.engine.on('connection_error', (err: any) => {
+      logger.error('Socket.io connection error:', err);
+      ErrorReporter.report(err instanceof Error ? err : new Error(String(err)), { type: 'socket_io', metadata: { code: err.code } });
     });
 
     logger.info('Socket.io initialized');

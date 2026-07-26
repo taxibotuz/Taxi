@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
+import { ErrorReporter } from '../services/ErrorReporter';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -15,21 +16,32 @@ export class AppError extends Error {
 
 export const errorHandler = (
   err: Error | AppError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) => {
-  if (err instanceof AppError) {
-    logger.warn(`Operational error: ${err.message}`);
-    return res.status(err.statusCode).json({
-      error: err.message,
+  const statusCode = err instanceof AppError ? err.statusCode : 500;
+
+  if (statusCode >= 500) {
+    logger.error('Server error:', err);
+    ErrorReporter.report(err, {
+      type: 'express',
+      endpoint: req.originalUrl,
+      method: req.method,
+      statusCode,
+      userId: (req as any).user?._id?.toString(),
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+      headers: req.headers as Record<string, any>,
+      requestBody: req.body as Record<string, any>,
+      query: req.query as Record<string, any>,
     });
+  } else if (statusCode >= 400) {
+    logger.warn(`Client error (${statusCode}): ${err.message}`);
   }
 
-  logger.error('Unexpected error:', err);
-
-  return res.status(500).json({
-    error: 'Internal server error',
+  return res.status(statusCode).json({
+    error: statusCode >= 500 ? 'Internal server error' : err.message,
   });
 };
 

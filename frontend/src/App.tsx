@@ -4,6 +4,8 @@ import { AnimatePresence } from 'framer-motion';
 import { useAuthStore } from './store/authStore';
 import { connectSocket, disconnectSocket } from './services/socket';
 import { authApi } from './services/api';
+import { initFrontendErrorReporting } from './services/errorReporter';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import SplashScreen from './components/ui/SplashScreen';
 import CustomerLayout from './pages/customer/CustomerLayout';
 import CustomerHome from './pages/customer/CustomerHome';
@@ -19,6 +21,7 @@ import AdminDrivers from './pages/admin/AdminDrivers';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminReports from './pages/admin/AdminReports';
 import AdminNotifications from './pages/admin/AdminNotifications';
+import AdminErrorLogs from './pages/admin/AdminErrorLogs';
 import AdminRoute from './components/auth/AdminRoute';
 import AuthPage from './pages/auth/AuthPage';
 
@@ -80,6 +83,10 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    initFrontendErrorReporting();
+  }, []);
+
+  useEffect(() => {
     try {
       const initData = (window as any).__TG_INIT_DATA || '';
       useAuthStore.getState().setInitData(initData);
@@ -97,6 +104,7 @@ function App() {
 
   return (
     <div className={`h-full w-full ${theme === 'dark' ? 'dark' : ''}`}>
+      <ErrorBoundary>
       <AnimatePresence mode="wait">
         <Routes>
           <Route path="/admin" element={<AdminRoute />}>
@@ -108,6 +116,7 @@ function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="notifications" element={<AdminNotifications />} />
+              <Route path="error-logs" element={<AdminErrorLogs />} />
             </Route>
           </Route>
 
@@ -136,6 +145,7 @@ function App() {
           )}
         </Routes>
       </AnimatePresence>
+      </ErrorBoundary>
     </div>
   );
 }
