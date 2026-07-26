@@ -15,18 +15,48 @@ interface AuthState {
   logout: () => void;
 }
 
+function safeLocalStorage(): Storage | null {
+  try {
+    const k = '__test__';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function getToken(): string | null {
+  const ls = safeLocalStorage();
+  if (!ls) return null;
+  try { return ls.getItem('taxigo_token'); } catch { return null; }
+}
+
+function getUser(): User | null {
+  const ls = safeLocalStorage();
+  if (!ls) return null;
+  try { return JSON.parse(ls.getItem('taxigo_user') || 'null'); } catch { return null; }
+}
+
+const initialToken = getToken();
+const initialUser = getUser();
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: localStorage.getItem('taxigo_token'),
-  user: JSON.parse(localStorage.getItem('taxigo_user') || 'null'),
-  isAuthenticated: !!localStorage.getItem('taxigo_token'),
+  token: initialToken,
+  user: initialUser,
+  isAuthenticated: !!initialToken,
   isAdmin: false,
   isDriver: false,
   telegramId: null,
   initData: '',
 
   setAuth: (token, user) => {
-    localStorage.setItem('taxigo_token', token);
-    localStorage.setItem('taxigo_user', JSON.stringify(user));
+    try {
+      localStorage.setItem('taxigo_token', token);
+      localStorage.setItem('taxigo_user', JSON.stringify(user));
+    } catch {
+      // localStorage unavailable — proceed without persistence
+    }
     set({
       token,
       user,
@@ -37,15 +67,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setUser: (user) => {
-    localStorage.setItem('taxigo_user', JSON.stringify(user));
+    try { localStorage.setItem('taxigo_user', JSON.stringify(user)); } catch {}
     set({ user, isAdmin: user.role === 'admin', isDriver: user.role === 'driver' });
   },
 
   setInitData: (data) => set({ initData: data }),
 
   logout: () => {
-    localStorage.removeItem('taxigo_token');
-    localStorage.removeItem('taxigo_user');
+    try {
+      localStorage.removeItem('taxigo_token');
+      localStorage.removeItem('taxigo_user');
+    } catch {}
     set({ token: null, user: null, isAuthenticated: false, isAdmin: false, isDriver: false });
   },
 }));
