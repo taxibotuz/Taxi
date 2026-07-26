@@ -12,5 +12,6 @@ router.get('/profile', authenticate, controller.getProfile.bind(controller));
 router.put('/profile', authenticate, validate(authSchemas.profileUpdate), controller.updateProfile.bind(controller));
 router.post('/become-driver', authenticate, validate(authSchemas.becomeDriver), controller.becomeDriver.bind(controller));
 router.get('/verify', authenticate, controller.verifyToken.bind(controller));
+router.get('/debug', authenticate, controller.debugAuth.bind(controller));
 
 export default router;

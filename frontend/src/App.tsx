@@ -31,16 +31,27 @@ function App() {
     const initApp = async () => {
       try {
         if (token) {
+          console.group('🔐 App.initApp');
+          console.log('Starting verifyToken...');
           const { data } = await authApi.verifyToken();
+          console.log('verifyToken response:', data);
           if (data.valid) {
+            console.log('Token valid, fetching profile...');
             const profile = await authApi.getProfile();
+            console.log('getProfile response user:', profile.data.user);
+            console.log('getProfile response user.role:', profile.data.user?.role);
             setAuth(token, profile.data.user);
+            console.groupEnd();
             connectSocket(token);
           } else {
+            console.warn('Token NOT valid, logging out');
+            console.groupEnd();
             logout();
           }
         }
       } catch {
+        console.warn('initApp error, logging out');
+        console.groupEnd();
         logout();
       } finally {
         setLoading(false);

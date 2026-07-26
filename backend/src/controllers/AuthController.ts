@@ -13,6 +13,10 @@ export class AuthController {
     try {
       const { id, first_name, last_name: lastName, username, photo_url } = req.body;
 
+      logger.info('=== AUTH TRACE: telegramLogin ===', { telegramId: id, bodyFirst: first_name });
+      logger.info(`TELEGRAM_ADMIN_IDS from config: [${config.telegram.adminIds.join(',')}]`);
+      logger.info(`User IS admin ID: ${config.telegram.adminIds.includes(id)}`);
+
       if (!id) {
         return res.status(400).json({ error: 'Telegram ID is required' });
       }
@@ -28,6 +32,7 @@ export class AuthController {
           user.role = UserRole.ADMIN;
         }
         await user.save();
+        logger.info('=== AUTH TRACE: User found in DB ===', { telegramId: id, dbRole: user.role, isAdmin: user.role === UserRole.ADMIN });
       } else {
         const role = config.telegram.adminIds.includes(id)
           ? UserRole.ADMIN
@@ -42,6 +47,7 @@ export class AuthController {
         });
 
         await Wallet.create({ userId: user._id });
+        logger.info('=== AUTH TRACE: New user created ===', { telegramId: id, assignedRole: role });
       }
 
       if (user.isBanned) {
@@ -57,6 +63,11 @@ export class AuthController {
         config.jwt.secret,
         { expiresIn: config.jwt.expiresIn as any }
       );
+
+      const jwtPayload = { _id: user._id.toString(), telegramId: user.telegramId, role: user.role };
+      logger.info('=== AUTH TRACE: JWT signed ===', { jwtPayload });
+      logger.info('=== AUTH TRACE: Response user.role ===', { role: user.role });
+      logger.info('=== AUTH TRACE: END telegramLogin ===');
 
       return res.json({
         token,
@@ -139,9 +150,29 @@ export class AuthController {
   }
 
   async verifyToken(req: AuthRequest, res: Response) {
+    logger.info('=== AUTH TRACE: verifyToken ===', { user: req.user });
     return res.json({
       valid: true,
       user: req.user,
+    });
+  }
+
+  async debugAuth(req: AuthRequest, res: Response) {
+    const user = await User.findById(req.user!._id).select('-__v');
+    logger.info('=== AUTH TRACE: debugAuth ===', {
+      telegramId: user?.telegramId,
+      dbRole: user?.role,
+      jwtUser: req.user,
+      adminIds: config.telegram.adminIds,
+      isAdminId: config.telegram.adminIds.includes(user?.telegramId || 0),
+    });
+    return res.json({
+      telegramId: user?.telegramId,
+      dbRole: user?.role,
+      jwtRole: req.user?.role,
+      adminIds: config.telegram.adminIds,
+      isAdminId: config.telegram.adminIds.includes(user?.telegramId || 0),
+      user,
     });
   }
 }
