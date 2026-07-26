@@ -53,19 +53,15 @@ function App() {
 
   useEffect(() => {
     try {
-      const tg = (window as any).Telegram?.WebApp;
-      if (tg) {
-        tg.ready();
-        tg.expand();
-        tg.enableClosingConfirmation();
-        useAuthStore.getState().setInitData(tg.initData || '');
+      const initData = (window as any).__TG_INIT_DATA || '';
+      useAuthStore.getState().setInitData(initData);
 
-        if (tg.colorScheme === 'light') {
-          setTheme('light');
-        }
+      const colorScheme = (window as any).__TG_COLOR_SCHEME;
+      if (colorScheme === 'light') {
+        setTheme('light');
       }
     } catch {
-      // Not in Telegram
+      // ignore
     }
   }, []);
 
