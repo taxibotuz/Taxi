@@ -24,8 +24,19 @@ import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
 import foodRoutes from './routes/food';
 
+process.on('unhandledRejection', (reason) => {
+  logger.error('UNHANDLED REJECTION:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('UNCAUGHT EXCEPTION:', err);
+  process.exit(1);
+});
+
 const app = express();
 const server = http.createServer(app);
+
+app.set('trust proxy', 1);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -73,11 +84,27 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/food', foodRoutes);
 
-app.get('/api/health', (_req, res) => {
+app.get('/health', (_req, res) => {
+  const mongoState = mongoose.connection.readyState;
+  const mongoStatus = ['disconnected', 'connected', 'connecting', 'disconnecting'];
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    database: mongoState === 1 ? 'connected' : mongoStatus[mongoState] || 'unknown',
+    redis: RedisService.isConnected() ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/health', (_req, res) => {
+  const mongoState = mongoose.connection.readyState;
+  const mongoStatus = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    database: mongoState === 1 ? 'connected' : mongoStatus[mongoState] || 'unknown',
+    redis: RedisService.isConnected() ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -137,13 +164,47 @@ function validateEnv(): void {
   }
 }
 
+mongoose.connection.on('error', (err) => {
+  logger.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  logger.warn('MongoDB disconnected');
+});
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 async function gracefulShutdown(signal: string) {
   logger.info(`${signal} received. Starting graceful shutdown...`);
+
+  try {
+    SocketService.close();
+    logger.info('Socket.io closed');
+  } catch (err) {
+    logger.error('Socket.io close error:', err);
+  }
+
   server.close(async () => {
     logger.info('HTTP server closed');
-    await bot.stop(signal);
-    await mongoose.disconnect();
-    logger.info('MongoDB disconnected');
+    try {
+      await bot.stop(signal);
+      logger.info('Telegram bot stopped');
+    } catch (err) {
+      logger.error('Bot stop error:', err);
+    }
+    try {
+      await RedisService.getInstance().disconnect();
+      logger.info('Redis disconnected');
+    } catch (err) {
+      logger.error('Redis disconnect error:', err);
+    }
+    try {
+      await mongoose.disconnect();
+      logger.info('MongoDB disconnected');
+    } catch (err) {
+      logger.error('MongoDB disconnect error:', err);
+    }
     process.exit(0);
   });
 
@@ -153,14 +214,14 @@ async function gracefulShutdown(signal: string) {
   }, 30000);
 }
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
 async function start() {
   try {
     validateEnv();
 
-    await mongoose.connect(config.mongodb.uri);
+    await mongoose.connect(config.mongodb.uri, {
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
+    });
     logger.info('MongoDB connected');
 
     server.listen(config.port, config.host, () => {

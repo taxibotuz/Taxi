@@ -152,4 +152,10 @@ export class SocketService {
   static broadcast(event: string, data: any) {
     this.io.emit(event, data);
   }
+
+  static close() {
+    if (this.io) {
+      this.io.close();
+    }
+  }
 }

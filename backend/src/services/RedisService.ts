@@ -10,9 +10,13 @@ export class RedisService {
   private connected: boolean = false;
 
   private constructor() {
-    this.client = new Redis(config.redis.url, { lazyConnect: true });
-    this.pubClient = new Redis(config.redis.url, { lazyConnect: true });
-    this.subClient = new Redis(config.redis.url, { lazyConnect: true });
+    this.client = new Redis(config.redis.url, { lazyConnect: true, maxRetriesPerRequest: null });
+    this.pubClient = new Redis(config.redis.url, { lazyConnect: true, maxRetriesPerRequest: null });
+    this.subClient = new Redis(config.redis.url, { lazyConnect: true, maxRetriesPerRequest: null });
+
+    this.client.on('error', (err) => logger.error('Redis client error:', err));
+    this.pubClient.on('error', (err) => logger.error('Redis pubClient error:', err));
+    this.subClient.on('error', (err) => logger.error('Redis subClient error:', err));
   }
 
   static getInstance(): RedisService {
@@ -20,6 +24,11 @@ export class RedisService {
       RedisService._instance = new RedisService();
     }
     return RedisService._instance;
+  }
+
+  static isConnected(): boolean {
+    if (!RedisService._instance) return false;
+    return RedisService._instance.connected;
   }
 
   async connect(): Promise<void> {
@@ -34,6 +43,7 @@ export class RedisService {
   }
 
   async disconnect(): Promise<void> {
+    this.connected = false;
     await Promise.all([
       this.client.quit(),
       this.pubClient.quit(),
