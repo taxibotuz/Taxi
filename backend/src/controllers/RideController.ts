@@ -4,7 +4,7 @@ import { Order } from '../models/Order';
 import { Driver, IDriver } from '../models/Driver';
 import { User } from '../models/User';
 import { PricingService } from '../services/PricingService';
-import { DriverMatchingService } from '../services/DriverMatchingService';
+import { DriverMatchingService, DriverWithRoute } from '../services/DriverMatchingService';
 import { GeoService } from '../services/GeoService';
 import { SocketService } from '../sockets/SocketService';
 import { TelegramBot } from '../bot';
@@ -84,26 +84,43 @@ export class RideController {
         offeredPrice,
       });
 
-      const rideData = {
-        rideId: order._id.toString(),
-        pickupAddress,
-        destAddress,
-        distance,
-        price: total,
-      };
-
-      const notifyDriver = async (driver: IDriver) => {
+      const notifyDriver = async (driver: DriverWithRoute, index: number) => {
         const user = await User.findById(driver.userId);
         if (user?.telegramId) {
-          TelegramBot.getInstance().sendRideRequest(user.telegramId, rideData);
+          TelegramBot.getInstance().sendRideRequest(user.telegramId, {
+            rideId: order._id.toString(),
+            pickupAddress,
+            destAddress,
+            pickupLat,
+            pickupLng,
+            destLat,
+            destLng,
+            tripDistance: distance,
+            tripDuration: duration,
+            driverDistance: driver.routeDistanceKm,
+            driverEta: driver.routeDurationMin,
+            price: total,
+          });
         }
-        SocketService.emitToDriver(driver._id.toString(), 'ride:request', rideData);
+        SocketService.emitToDriver(driver._id.toString(), 'ride:request', {
+          rideId: order._id.toString(),
+          pickupAddress,
+          destAddress,
+          distance,
+          price: total,
+        });
       };
 
       driverMatchingService.startSearch(
         order._id.toString(),
         pickupLat,
         pickupLng,
+        destLat,
+        destLng,
+        destAddress,
+        pickupAddress,
+        distance,
+        total,
         async (driver) => {
           order.driverId = driver._id;
           order.status = RideStatus.ACCEPTED;
@@ -127,6 +144,8 @@ export class RideController {
           order.cancelReason = 'No drivers available';
           order.cancelledAt = new Date();
           await order.save();
+
+          await TelegramBot.getInstance().deleteRideMessages(order._id.toString());
 
           SocketService.emitToUser(order.customerId.toString(), 'search:status', {
             rideId: order._id,

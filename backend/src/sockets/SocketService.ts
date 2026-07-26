@@ -90,7 +90,7 @@ export class SocketService {
           this.driverMatchingService.acceptRide(
             driver._id.toString(),
             data.rideId,
-            async () => {
+            async (notifiedDriverIds: string[]) => {
               const order = await Order.findById(data.rideId);
               if (!order || order.status !== RideStatus.SEARCHING) return;
 

@@ -6,7 +6,7 @@ import { Driver } from '../models/Driver';
 import { Order } from '../models/Order';
 import { Settings } from '../models/Settings';
 import { UserRole, RideStatus, DriverStatus } from '../types';
-import { DriverMatchingService } from '../services/DriverMatchingService';
+import { DriverMatchingService, DriverWithRoute } from '../services/DriverMatchingService';
 import { SocketService } from '../sockets/SocketService';
 import { ErrorReporter } from '../services/ErrorReporter';
 import { ErrorLog } from '../models/ErrorLog';
@@ -76,11 +76,11 @@ const translations: Record<string, Record<string, string>> = {
     user_not_found: 'Foydalanuvchi topilmadi. Avval botni yoqing.',
     ride_not_found: 'Safar topilmadi.',
     ride_not_available: 'Bu safar endi mavjud emas.',
-    ride_accepted: '✅ Safar qabul qilindi: {id}',
+    ride_accepted: '✅ Safar qabul qilindi!',
     ride_already_accepted: 'Bu safar allaqachon boshqa haydovchi tomonidan qabul qilindi.',
     ride_accept_error: 'Safarni qabul qilishda xatolik yuz berdi.',
     ride_rejected: 'Safar rad qilindi',
-    ride_rejected_msg: '❌ Siz safarni rad qildingiz: {id}',
+    ride_rejected_msg: '❌ Siz safarni rad qildingiz.',
     open_dashboard_btn: 'Boshqaruv panelini ochish',
     driver_management: '👥 Haydovchi boshqaruvi',
     open_drivers_btn: 'Haydovchilarni ochish',
@@ -121,9 +121,15 @@ const translations: Record<string, Record<string, string>> = {
     to_label: '🏁 Qayerga:',
     distance_label: '📏 Masofa:',
     price_label: '💰 Narx:',
-    accept_time: 'Qabul qilish uchun 15 soniyangiz bor.',
+    accept_time: 'Qabul qilish uchun {seconds} soniyangiz bor.',
     accept_btn: '✅ Qabul qilish',
     reject_btn: '❌ Rad qilish',
+    open_map_btn: '🗺 Xarita',
+    driver_distance: '🚶 Sizdan: {distance} km ({eta} daqiqa)',
+    trip_distance: '🛤 Sayohat: {distance} km ({eta} daqiqa)',
+    ride_expired: '⏰ Vaqt tugadi. Safar boshqa haydovchiga o\'tdi.',
+    ride_cancelled_by_customer: '🚫 Mijoz safarni bekor qildi.',
+    not_a_driver: 'Siz haydovchi emassiz.',
   },
   ru: {
     choose_language: 'Выберите язык:',
@@ -189,11 +195,11 @@ const translations: Record<string, Record<string, string>> = {
     user_not_found: 'Пользователь не найден. Сначала запустите бот.',
     ride_not_found: 'Поездка не найдена.',
     ride_not_available: 'Эта поездка больше недоступна.',
-    ride_accepted: '✅ Поездка принята: {id}',
+    ride_accepted: '✅ Поездка принята!',
     ride_already_accepted: 'Эта поездка уже принята другим водителем.',
     ride_accept_error: 'Ошибка при принятии поездки.',
     ride_rejected: 'Поездка отклонена',
-    ride_rejected_msg: '❌ Вы отклонили поездку: {id}',
+    ride_rejected_msg: '❌ Вы отклонили поездку.',
     open_dashboard_btn: 'Открыть панель',
     driver_management: '👥 Управление водителями',
     open_drivers_btn: 'Открыть водителей',
@@ -234,9 +240,14 @@ const translations: Record<string, Record<string, string>> = {
     to_label: '🏁 Куда:',
     distance_label: '📏 Расстояние:',
     price_label: '💰 Цена:',
-    accept_time: 'У вас 15 секунд на принятие.',
+    accept_time: 'У вас {seconds} секунд на принятие.',
     accept_btn: '✅ Принять',
     reject_btn: '❌ Отклонить',
+    open_map_btn: '🗺 Карта',
+    driver_distance: '🚶 От вас: {distance} км ({eta} мин)',
+    trip_distance: '🛤 Поездка: {distance} км ({eta} мин)',
+    ride_expired: '⏰ Время вышло. Поездка передана другому водителю.',
+    ride_cancelled_by_customer: '🚫 Клиент отменил поездку.',
   },
 };
 
@@ -253,6 +264,7 @@ export class TelegramBot {
   private bot: Telegraf;
   private launched: boolean = false;
   private app: express.Application | null = null;
+  private rideMessages: Map<string, Array<{ telegramId: number; messageId: number }>> = new Map();
 
   constructor() {
     TelegramBot._instance = this;
@@ -386,36 +398,6 @@ export class TelegramBot {
       const user = await User.findOne({ telegramId: ctx.from.id });
       const lang = this.getUserLang(user);
       await ctx.reply(this.t(lang, 'you_are_now_offline'));
-    });
-
-    this.bot.hears(/location/i, async (ctx: any) => {
-      try {
-        const driver = await Driver.findOne({ userId: ctx.from.id as any });
-        if (!driver || !driver.isOnline) return;
-
-        const location = ctx.message?.location;
-        if (!location) return;
-
-        await Driver.findOneAndUpdate(
-          { userId: ctx.from.id as any },
-          {
-            'currentLocation.coordinates': [location.longitude, location.latitude],
-            'currentLocation.updatedAt': new Date(),
-          }
-        );
-
-        await SocketService.emitToUser(
-          driver.userId.toString(),
-          'driver:location',
-          {
-            driverId: driver._id,
-            lat: location.latitude,
-            lng: location.longitude,
-          }
-        );
-      } catch (error) {
-        logger.error('Telegram location error:', error);
-      }
     });
 
     this.bot.command('history', async (ctx) => {
@@ -589,25 +571,39 @@ export class TelegramBot {
         await driverMatchingService.acceptRide(
           driver._id.toString(),
           rideId,
-          async () => {
+          async (notifiedDriverIds: string[]) => {
             order.driverId = driver._id;
             order.status = RideStatus.ACCEPTED;
             order.acceptedAt = new Date();
             await order.save();
 
-            await ctx.reply(this.t(lang, 'ride_accepted', { id: rideId.slice(0, 8) }));
+            try {
+              await ctx.editMessageText(this.t(lang, 'ride_accepted'));
+            } catch {
+              await ctx.reply(this.t(lang, 'ride_accepted'));
+            }
 
+            await this.notifyOtherDriversRideTaken(rideId, notifiedDriverIds, driver._id.toString());
+
+            const driverUser = await User.findById(driver.userId);
             SocketService.emitToUser(order.customerId.toString(), 'ride:accepted', {
               rideId: order._id,
               driverId: driver._id,
               driverInfo: {
+                firstName: driverUser?.firstName,
+                photoUrl: driverUser?.photoUrl,
                 car: driver.car,
                 rating: driver.rating,
+                phone: driverUser?.phone,
               },
             });
           },
           async () => {
-            await ctx.reply(this.t(lang, 'ride_already_accepted'));
+            try {
+              await ctx.editMessageText(this.t(lang, 'ride_already_accepted'));
+            } catch {
+              await ctx.reply(this.t(lang, 'ride_already_accepted'));
+            }
           }
         );
       } catch (error) {
@@ -623,7 +619,24 @@ export class TelegramBot {
       const user = await User.findOne({ telegramId: ctx.from.id });
       const lang = this.getUserLang(user);
       await ctx.answerCbQuery(this.t(lang, 'ride_rejected'));
-      await ctx.reply(this.t(lang, 'ride_rejected_msg', { id: rideId.slice(0, 8) }));
+
+      try {
+        await ctx.editMessageText(this.t(lang, 'ride_rejected_msg'));
+      } catch {
+        await ctx.reply(this.t(lang, 'ride_rejected_msg'));
+      }
+
+      const driver = await this.getDriverByTelegram(ctx);
+      if (driver) {
+        const order = await Order.findById(rideId);
+        if (order && order.status === RideStatus.SEARCHING) {
+          if (!order.rejectedDrivers.includes(driver._id)) {
+            order.rejectedDrivers.push(driver._id);
+            await order.save();
+          }
+        }
+      }
+
       logger.info(`Driver ${ctx.from.id} rejected ride ${rideId}`);
     });
 
@@ -845,28 +858,130 @@ export class TelegramBot {
     }
   }
 
-  async sendRideRequest(telegramId: number, rideData: any) {
+  async sendRideRequest(
+    telegramId: number,
+    rideData: {
+      rideId: string;
+      pickupAddress: string;
+      destAddress: string;
+      pickupLat: number;
+      pickupLng: number;
+      destLat: number;
+      destLng: number;
+      tripDistance: number;
+      tripDuration: number;
+      driverDistance: number;
+      driverEta: number;
+      price: number;
+    }
+  ): Promise<number | null> {
     try {
       const user = await User.findOne({ telegramId });
       const lang = this.getUserLang(user);
-      await this.bot.telegram.sendMessage(
-        telegramId,
+      const seconds = (await Settings.findOne())?.search.rideExpirySeconds || 30;
+
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${rideData.pickupLat},${rideData.pickupLng}&destination=${rideData.destLat},${rideData.destLng}`;
+
+      const message =
         `${this.t(lang, 'new_ride_request')}\n\n` +
         `${this.t(lang, 'from_label')} ${rideData.pickupAddress}\n` +
-        `${this.t(lang, 'to_label')} ${rideData.destAddress}\n` +
-        `${this.t(lang, 'distance_label')} ${rideData.distance} km\n` +
+        `${this.t(lang, 'to_label')} ${rideData.destAddress}\n\n` +
+        `${this.t(lang, 'driver_distance', { distance: rideData.driverDistance, eta: rideData.driverEta })}\n` +
+        `${this.t(lang, 'trip_distance', { distance: rideData.tripDistance, eta: rideData.tripDuration })}\n` +
         `${this.t(lang, 'price_label')} ${rideData.price.toLocaleString()}${this.t(lang, 'sum_label')}\n\n` +
-        `${this.t(lang, 'accept_time')}`,
+        `${this.t(lang, 'accept_time', { seconds })}`;
+
+      const result = await this.bot.telegram.sendMessage(
+        telegramId,
+        message,
         Markup.inlineKeyboard([
           [
             Markup.button.callback(this.t(lang, 'accept_btn'), `accept_ride:${rideData.rideId}`),
             Markup.button.callback(this.t(lang, 'reject_btn'), `reject_ride:${rideData.rideId}`),
           ],
+          [Markup.button.url(this.t(lang, 'open_map_btn'), mapsUrl)],
         ])
       );
+
+      const messages = this.rideMessages.get(rideData.rideId) || [];
+      messages.push({ telegramId, messageId: result.message_id });
+      this.rideMessages.set(rideData.rideId, messages);
+
+      return result.message_id;
     } catch (error) {
       logger.error('Send ride request error:', error);
+      return null;
     }
+  }
+
+  async notifyRideExpired(telegramId: number, rideId: string): Promise<void> {
+    try {
+      const user = await User.findOne({ telegramId });
+      const lang = this.getUserLang(user);
+      await this.bot.telegram.sendMessage(telegramId, this.t(lang, 'ride_expired'));
+    } catch (error) {
+      logger.error('Notify ride expired error:', error);
+    }
+  }
+
+  async notifyRideCancelled(telegramId: number): Promise<void> {
+    try {
+      const user = await User.findOne({ telegramId });
+      const lang = this.getUserLang(user);
+      await this.bot.telegram.sendMessage(telegramId, this.t(lang, 'ride_cancelled_by_customer'));
+    } catch (error) {
+      logger.error('Notify ride cancelled error:', error);
+    }
+  }
+
+  private async notifyOtherDriversRideTaken(
+    rideId: string,
+    notifiedDriverIds: string[],
+    acceptedDriverId: string
+  ): Promise<void> {
+    const messages = this.rideMessages.get(rideId) || [];
+
+    for (const msg of messages) {
+      if (msg.messageId) {
+        try {
+          const user = await User.findOne({ telegramId: msg.telegramId });
+          const lang = this.getUserLang(user);
+
+          const driver = await Driver.findOne({ userId: user?._id });
+          if (driver && driver._id.toString() === acceptedDriverId) continue;
+
+          await this.bot.telegram.editMessageText(
+            msg.telegramId,
+            msg.messageId,
+            undefined,
+            this.t(lang, 'ride_already_accepted')
+          );
+        } catch {
+          try {
+            await this.bot.telegram.sendMessage(
+              msg.telegramId,
+              this.t('uz', 'ride_already_accepted')
+            );
+          } catch {
+            continue;
+          }
+        }
+      }
+    }
+
+    this.rideMessages.delete(rideId);
+  }
+
+  async deleteRideMessages(rideId: string): Promise<void> {
+    const messages = this.rideMessages.get(rideId) || [];
+    for (const msg of messages) {
+      try {
+        await this.bot.telegram.deleteMessage(msg.telegramId, msg.messageId);
+      } catch {
+        continue;
+      }
+    }
+    this.rideMessages.delete(rideId);
   }
 
   private setupErrorHandler() {

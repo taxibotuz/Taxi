@@ -19,6 +19,8 @@ export interface ISettings extends Document {
     maxRadius: number;
     searchTimeout: number;
     maxDriversPerSearch: number;
+    maxDriversToNotify: number;
+    rideExpirySeconds: number;
     expansionStep: number;
     maxExpansions: number;
   };
@@ -82,6 +84,8 @@ const settingsSchema = new Schema<ISettings>({
     maxRadius: { type: Number, default: 15 },
     searchTimeout: { type: Number, default: 15 },
     maxDriversPerSearch: { type: Number, default: 10 },
+    maxDriversToNotify: { type: Number, default: 5 },
+    rideExpirySeconds: { type: Number, default: 30 },
     expansionStep: { type: Number, default: 5 },
     maxExpansions: { type: Number, default: 3 },
   },

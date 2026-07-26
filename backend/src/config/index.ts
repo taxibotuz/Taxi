@@ -67,6 +67,8 @@ export const config = {
   defaults: {
     searchRadius: parseInt(process.env.DEFAULT_SEARCH_RADIUS || '15', 10),
     searchTimeout: parseInt(process.env.DEFAULT_SEARCH_TIMEOUT || '15', 10),
+    maxDriversToNotify: parseInt(process.env.MAX_DRIVERS_TO_NOTIFY || '5', 10),
+    rideExpirySeconds: parseInt(process.env.RIDE_EXPIRY_SECONDS || '30', 10),
     surgeMultiplier: parseFloat(process.env.SURGE_MULTIPLIER || '1.0'),
   },
 
