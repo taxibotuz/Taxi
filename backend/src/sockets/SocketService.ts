@@ -9,11 +9,14 @@ import { Driver } from '../models/Driver';
 import { Order } from '../models/Order';
 import { RideStatus } from '../types';
 import { DriverMatchingService } from '../services/DriverMatchingService';
+import { LocationBatcher } from '../services/LocationBatcher';
 
 export class SocketService {
   private static io: Server;
   private static userSockets: Map<string, string[]> = new Map();
   private static driverMatchingService: DriverMatchingService;
+  private static locationBatcher: LocationBatcher;
+  private static driverCustomerMap: Map<string, string> = new Map();
 
   static initialize(httpServer: HTTPServer) {
     this.io = new Server(httpServer, {
@@ -27,6 +30,7 @@ export class SocketService {
     });
 
     this.driverMatchingService = DriverMatchingService.getInstance();
+    this.locationBatcher = LocationBatcher.getInstance();
 
     this.io.use(async (socket, next) => {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -65,16 +69,27 @@ export class SocketService {
       socket.on('location:update', async (data: { lat: number; lng: number }) => {
         try {
           const driver = await Driver.findOne({ userId });
-          if (driver) {
-            await driver.updateOne({
-              'currentLocation.coordinates': [data.lng, data.lat],
-              'currentLocation.updatedAt': new Date(),
-            });
+          if (!driver) return;
 
-            this.io.to('admins').emit('driver:location', {
+          this.locationBatcher.queueUpdate(driver._id.toString(), data.lng, data.lat);
+
+          this.io.to('admins').emit('driver:location', {
+            driverId: driver._id,
+            lat: data.lat,
+            lng: data.lng,
+          });
+
+          const activeOrder = await Order.findOne({
+            driverId: driver._id,
+            status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS] },
+          }).select('customerId');
+
+          if (activeOrder) {
+            this.io.to(`user:${activeOrder.customerId.toString()}`).emit('driver:location', {
               driverId: driver._id,
               lat: data.lat,
               lng: data.lng,
+              orderId: activeOrder._id,
             });
           }
         } catch (error) {
@@ -98,6 +113,8 @@ export class SocketService {
               order.status = RideStatus.ACCEPTED;
               order.acceptedAt = new Date();
               await order.save();
+
+              this.driverCustomerMap.set(driver._id.toString(), order.customerId.toString());
 
               this.io.to(`user:${userId}`).emit('ride:accepted', {
                 rideId: data.rideId,
@@ -159,9 +176,20 @@ export class SocketService {
     this.io.emit(event, data);
   }
 
+  static setDriverCustomer(driverId: string, customerId: string) {
+    this.driverCustomerMap.set(driverId, customerId);
+  }
+
+  static clearDriverCustomer(driverId: string) {
+    this.driverCustomerMap.delete(driverId);
+  }
+
   static close() {
     if (this.io) {
       this.io.close();
+    }
+    if (this.locationBatcher) {
+      this.locationBatcher.stop();
     }
   }
 }

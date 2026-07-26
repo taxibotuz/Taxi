@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { driversApi } from '../../services/api';
 import { isInsideDistrict } from '../../services/geo';
+import { useLocationTracking } from '../../hooks/useLocationTracking';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../../i18n';
 
@@ -32,6 +33,12 @@ export default function DriverDashboard() {
     : null;
 
   const isInDistrict = driverLocation ? isInsideDistrict(driverLocation) : true;
+
+  const { isTracking, gpsAvailable } = useLocationTracking({
+    enabled: !!driver?.isOnline,
+    intervalMs: 7000,
+    distanceThresholdMeters: 20,
+  });
 
   const StatCard = ({ label, value, icon }: { label: string; value: string | number; icon: string }) => (
     <motion.div
@@ -80,6 +87,27 @@ export default function DriverDashboard() {
           </div>
         )}
       </motion.div>
+
+      {driver?.isOnline && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className={`rounded-2xl p-3 text-xs font-medium flex items-center gap-2 ${
+            !gpsAvailable
+              ? 'bg-red-500/10 border border-red-500/30 text-red-400'
+              : isTracking
+              ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+              : 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400'
+          }`}
+        >
+          <div className={`w-2 h-2 rounded-full ${!gpsAvailable ? 'bg-red-500' : isTracking ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+          {!gpsAvailable
+            ? t('gps_unavailable')
+            : isTracking
+            ? t('location_tracking_active')
+            : t('location_starting')}
+        </motion.div>
+      )}
 
       {activeRide && (
         <motion.div

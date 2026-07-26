@@ -89,6 +89,11 @@ const translations: Record<Language, Record<string, string>> = {
     plate: 'Davlat raqami',
     pending_approval: '⏳ Tasdiqlanish kutilmoqda',
     account_reviewing: 'Hisobingiz administrator tomonidan ko\'rib chiqilmoqda',
+    gps_unavailable: 'GPS mavjud emas. Joylashuvni yuborib bo\'lmaydi.',
+    location_tracking_active: 'Joylashuv tracking faol',
+    location_starting: 'Joylashuv tracking boshlanmoqda...',
+    live_drivers_map: '🟢 Haydovchilar xaritasi',
+    live: 'LIVE',
     you_are_online: 'Siz faol holatdasiz!',
     you_are_offline: 'Siz faol emassiz',
 
@@ -463,6 +468,11 @@ const translations: Record<Language, Record<string, string>> = {
     plate: 'Гос. номер',
     pending_approval: '⏳ Ожидание одобрения',
     account_reviewing: 'Ваш аккаунт проверяется администратором',
+    gps_unavailable: 'GPS недоступен. Невозможно отправить местоположение.',
+    location_tracking_active: 'Отслеживание местоположения активно',
+    location_starting: 'Запуск отслеживания местоположения...',
+    live_drivers_map: '🟢 Карта водителей',
+    live: 'LIVE',
     you_are_online: 'Вы онлайн!',
     you_are_offline: 'Вы офлайн',
 

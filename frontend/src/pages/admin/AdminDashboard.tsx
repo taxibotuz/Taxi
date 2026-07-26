@@ -1,18 +1,76 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { adminApi } from '../../services/api';
+import { connectSocket, subscribeToDriverLocation } from '../../services/socket';
+import { useAuthStore } from '../../store/authStore';
+import MapView from '../../components/ui/MapView';
+import { districtConfig, getDefaultCenter } from '../../services/geo';
 import { useTranslation } from '../../i18n';
 
-const COLORS = ['#0c8ee7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+interface DriverLocation {
+  driverId: string;
+  lat: number;
+  lng: number;
+  firstName?: string;
+  carModel?: string;
+}
 
 export default function AdminDashboard() {
   const { t } = useTranslation();
+  const token = useAuthStore((s) => s.token);
+  const [driverLocations, setDriverLocations] = useState<Map<string, DriverLocation>>(new Map());
+  const [mapCenter] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: () => adminApi.getDashboard(),
     refetchInterval: 15000,
   });
+
+  const { data: locationsData } = useQuery({
+    queryKey: ['admin', 'drivers-locations'],
+    queryFn: () => adminApi.getDriversLocations(),
+    refetchInterval: 30000,
+  });
+
+  useEffect(() => {
+    if (!locationsData?.data?.drivers) return;
+    const map = new Map<string, DriverLocation>();
+    for (const d of locationsData.data.drivers) {
+      if (d.currentLocation?.coordinates) {
+        map.set(d._id, {
+          driverId: d._id,
+          lat: d.currentLocation.coordinates[1],
+          lng: d.currentLocation.coordinates[0],
+          firstName: d.userId?.firstName,
+          carModel: d.car?.model,
+        });
+      }
+    }
+    setDriverLocations(map);
+  }, [locationsData]);
+
+  useEffect(() => {
+    if (!token) return;
+    const socket = connectSocket(token);
+
+    const unsub = subscribeToDriverLocation((data: any) => {
+      setDriverLocations((prev) => {
+        const next = new Map(prev);
+        next.set(data.driverId, {
+          ...next.get(data.driverId),
+          driverId: data.driverId,
+          lat: data.lat,
+          lng: data.lng,
+        });
+        return next;
+      });
+    });
+
+    return () => { unsub(); };
+  }, [token]);
 
   const s = data?.data?.stats;
   const recentOrders = data?.data?.recentOrders || [];
@@ -32,6 +90,12 @@ export default function AdminDashboard() {
     { name: t('this_month'), revenue: s?.revenueMonth || 0 },
     { name: t('total'), revenue: s?.totalRevenue || 0 },
   ];
+
+  const driverMarkers = Array.from(driverLocations.values()).map((d) => ({
+    lat: d.lat,
+    lng: d.lng,
+    label: `${d.firstName || 'Driver'} • ${d.carModel || ''}`,
+  }));
 
   const StatCard = ({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) => (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`glass rounded-2xl p-4 border-l-4 ${color}`}>
@@ -72,11 +136,30 @@ export default function AdminDashboard() {
         <StatCard icon="💵" label={t('total_revenue')} value={`${(s?.totalRevenue || 0).toLocaleString()} ${t('sum')}`} color="border-orange-500" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <StatCard icon="✅" label={t('completed_today')} value={s?.completedToday || 0} color="border-teal-500" />
         <StatCard icon="❌" label={t('cancelled_today')} value={s?.cancelledToday || 0} color="border-red-500" />
         <StatCard icon="⏳" label={t('pending_orders')} value={s?.pendingOrders || 0} color="border-amber-500" />
       </div>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl overflow-hidden">
+        <div className="p-3 flex items-center justify-between border-b border-white/5">
+          <h3 className="font-semibold text-sm">{t('live_drivers_map')} ({driverLocations.size})</h3>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] text-gray-400">{t('live')}</span>
+          </div>
+        </div>
+        <div className="h-64">
+          <MapView
+            center={mapCenter}
+            zoom={districtConfig.zoom}
+            markers={driverMarkers}
+            showDistrict
+            showSatelliteToggle={false}
+          />
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-4">
