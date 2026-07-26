@@ -61,6 +61,15 @@ export default function AdminDrivers() {
     onError: () => toast.error(t('failed_update_driver')),
   });
 
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => adminApi.updateDriver(id, { isApproved: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'drivers'] });
+      toast.success(t('driver_approved'));
+    },
+    onError: () => toast.error(t('failed_update_driver')),
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: any) => adminApi.createDriver(data),
     onSuccess: () => {
@@ -230,6 +239,10 @@ export default function AdminDrivers() {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${d.isApproved ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                   {d.isApproved ? t('approved') : t('pending_approval_stat')}
                 </span>
+                {!d.isApproved && (
+                  <button onClick={() => approveMutation.mutate(d._id)} disabled={approveMutation.isPending}
+                    className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full hover:bg-green-500/30 disabled:opacity-50">{t('approve_btn')}</button>
+                )}
                 <button onClick={() => viewDetail(d)} className="text-xs text-primary-500 hover:underline">{t('view')}</button>
                 <button onClick={() => openEdit(d)} className="text-xs text-primary-500 hover:underline">{t('edit')}</button>
                 <button onClick={() => { if (confirm(t('delete_driver_confirm'))) deleteMutation.mutate(d._id); }}
@@ -329,6 +342,11 @@ export default function AdminDrivers() {
               <div className="flex justify-between"><span className="text-gray-400">{t('total_earnings')}</span><span>{detail.totalEarnings?.toLocaleString()} {t('sum')}</span></div>
             </div>
             <button onClick={() => setDetail(null)} className="w-full mt-4 py-3 rounded-xl bg-white/10 text-sm">{t('close')}</button>
+            {!detail.isApproved && (
+              <button onClick={() => { approveMutation.mutate(detail._id); setDetail(null); }}
+                disabled={approveMutation.isPending}
+                className="w-full mt-2 py-3 rounded-xl bg-green-500/20 text-green-400 text-sm font-semibold hover:bg-green-500/30 disabled:opacity-50">{t('approve_btn')}</button>
+            )}
           </div>
         </div>
       )}
