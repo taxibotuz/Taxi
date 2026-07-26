@@ -10,6 +10,21 @@ import { DriverMatchingService } from '../services/DriverMatchingService';
 import { SocketService } from '../sockets/SocketService';
 import { logger } from '../config/logger';
 
+const translations: Record<string, Record<string, string>> = {
+  uz: {
+    choose_language: 'Tilni tanlang:',
+    language_saved: 'Til saqlandi!',
+    welcome: 'Xush kelibsiz! 🚖\nTaxiGo xizmatidan foydalanish uchun quyidagi tugmani bosing.',
+    open_taxi: '\u{1F697} Open TaxiGo',
+  },
+  ru: {
+    choose_language: '\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u044F\u0437\u044B\u043A:',
+    language_saved: '\u042F\u0437\u044B\u043A \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D!',
+    welcome: '\u0414\u043E\u0431\u0440\u043E \u043F\u043E\u0436\u0430\u043B\u043E\u0432\u0430\u0442\u044C! \u{1F696}\n\u0427\u0442\u043E\u0431\u044B \u0432\u043E\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u044C\u0441\u044F TaxiGo, \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443 \u043D\u0438\u0436\u0435.',
+    open_taxi: '\u{1F697} Open TaxiGo',
+  },
+};
+
 export class TelegramBot {
   private static _instance: TelegramBot;
   private bot: Telegraf;
@@ -33,6 +48,37 @@ export class TelegramBot {
     this.app = app;
   }
 
+  private getTranslation(lang: string, key: string): string {
+    return translations[lang]?.[key] || translations.uz[key] || key;
+  }
+
+  private buildMainMenuKeyboard(user: any) {
+    const lang = user.language || 'uz';
+    const t = (key: string) => this.getTranslation(lang, key);
+    const telegramId = user.telegramId;
+    const isAdmin = config.telegram.adminIds.includes(telegramId);
+    const isDriver = user.role === UserRole.DRIVER;
+
+    const buttonRows: any[] = [
+      [Markup.button.webApp(t('open_taxi'), config.telegram.webappUrl)],
+    ];
+
+    if (isDriver) {
+      buttonRows.unshift([
+        Markup.button.callback('Online', 'toggle_online'),
+        Markup.button.callback('Status', 'driver_status'),
+      ]);
+    }
+
+    if (isAdmin) {
+      buttonRows.push([
+        Markup.button.webApp('Admin Panel', `${config.telegram.webappUrl}/admin`),
+      ]);
+    }
+
+    return { text: t('welcome'), keyboard: Markup.inlineKeyboard(buttonRows) };
+  }
+
   private setupCommands() {
     this.bot.start(async (ctx) => {
       const telegramId = ctx.from.id;
@@ -48,32 +94,25 @@ export class TelegramBot {
         });
       }
 
-      const isAdmin = config.telegram.adminIds.includes(telegramId);
-      const isDriver = user.role === UserRole.DRIVER;
-
-      const buttonRows: any[] = [
-        [Markup.button.webApp('Open TaxiGo', config.telegram.webappUrl)],
-      ];
-
-      if (isDriver) {
-        buttonRows.unshift([
-          Markup.button.callback('Online', 'toggle_online'),
-          Markup.button.callback('Status', 'driver_status'),
-        ]);
+      if (config.telegram.adminIds.includes(telegramId) && user.role !== UserRole.ADMIN) {
+        user.role = UserRole.ADMIN;
+        await user.save();
       }
 
-      if (isAdmin) {
-        buttonRows.push([
-          Markup.button.webApp('Admin Panel', `${config.telegram.webappUrl}/admin`),
-        ]);
+      if (user.language) {
+        const { text, keyboard } = this.buildMainMenuKeyboard(user);
+        await ctx.reply(text, keyboard);
+      } else {
+        await ctx.reply(
+          'Tilni tanlang / \u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u044F\u0437\u044B\u043A:',
+          Markup.inlineKeyboard([
+            [
+              Markup.button.callback('\u{1F1FA}\u{1F1FF} O\u2018zbek', 'lang:uz'),
+              Markup.button.callback('\u{1F1F7}\u{1F1FA} \u0420\u0443\u0441\u0441\u043A\u0438\u0439', 'lang:ru'),
+            ],
+          ])
+        );
       }
-
-      await ctx.reply(
-        `Welcome to TaxiGo, ${ctx.from.first_name}! 🚀\n\n` +
-        `Order taxis, track rides, and more.\n` +
-        `Use the buttons below to get started.`,
-        Markup.inlineKeyboard(buttonRows)
-      );
     });
 
     this.bot.command('status', async (ctx) => {
@@ -167,6 +206,26 @@ export class TelegramBot {
   }
 
   private setupActions() {
+    this.bot.action(/lang:(.+)/, async (ctx) => {
+      const lang = ctx.match[1];
+      const telegramId = ctx.from.id;
+
+      await User.findOneAndUpdate({ telegramId }, { language: lang });
+      await ctx.answerCbQuery(this.getTranslation(lang, 'language_saved'));
+
+      const user = await User.findOne({ telegramId });
+      if (!user) return;
+
+      const { text, keyboard } = this.buildMainMenuKeyboard(user);
+      try {
+        await ctx.editMessageText(text, {
+          reply_markup: keyboard.reply_markup,
+        });
+      } catch {
+        await ctx.reply(text, keyboard);
+      }
+    });
+
     this.bot.action('toggle_online', async (ctx) => {
       await this.toggleOnline(ctx);
     });
