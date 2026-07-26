@@ -1,21 +1,36 @@
 import { Telegraf, Markup } from 'telegraf';
+import express from 'express';
 import { config } from '../config';
 import { User } from '../models/User';
 import { Driver } from '../models/Driver';
 import { Order } from '../models/Order';
 import { Settings } from '../models/Settings';
 import { UserRole, RideStatus, DriverStatus } from '../types';
+import { DriverMatchingService } from '../services/DriverMatchingService';
+import { SocketService } from '../sockets/SocketService';
 import { logger } from '../config/logger';
 
 export class TelegramBot {
+  private static _instance: TelegramBot;
   private bot: Telegraf;
+  private launched: boolean = false;
+  private app: express.Application | null = null;
 
   constructor() {
+    TelegramBot._instance = this;
     this.bot = new Telegraf(config.telegram.botToken);
 
     this.setupCommands();
     this.setupActions();
     this.setupHears();
+  }
+
+  static getInstance(): TelegramBot {
+    return TelegramBot._instance;
+  }
+
+  setApp(app: express.Application): void {
+    this.app = app;
   }
 
   private setupCommands() {
@@ -167,6 +182,68 @@ export class TelegramBot {
         `🚗 ${driver.totalRides} rides completed`
       );
     });
+
+    this.bot.action(/accept_ride:(.+)/, async (ctx) => {
+      const rideId = ctx.match[1];
+      const telegramId = ctx.from.id;
+      await ctx.answerCbQuery('Accepting ride...');
+
+      try {
+        const user = await User.findOne({ telegramId });
+        if (!user) {
+          return ctx.reply('User not found. Please start the bot first.');
+        }
+
+        const driver = await Driver.findOne({ userId: user._id });
+        if (!driver) {
+          return ctx.reply('You are not registered as a driver.');
+        }
+
+        const order = await Order.findById(rideId);
+        if (!order) {
+          return ctx.reply('Ride not found.');
+        }
+        if (order.status !== RideStatus.SEARCHING) {
+          return ctx.reply('This ride is no longer available.');
+        }
+
+        const driverMatchingService = DriverMatchingService.getInstance();
+        await driverMatchingService.acceptRide(
+          driver._id.toString(),
+          rideId,
+          async () => {
+            order.driverId = driver._id;
+            order.status = RideStatus.ACCEPTED;
+            order.acceptedAt = new Date();
+            await order.save();
+
+            await ctx.reply(`✅ You accepted ride ${rideId.slice(0, 8)}...`);
+
+            SocketService.emitToUser(order.customerId.toString(), 'ride:accepted', {
+              rideId: order._id,
+              driverId: driver._id,
+              driverInfo: {
+                car: driver.car,
+                rating: driver.rating,
+              },
+            });
+          },
+          async () => {
+            await ctx.reply('This ride has already been accepted by another driver.');
+          }
+        );
+      } catch (error) {
+        logger.error('Bot accept ride error:', error);
+        await ctx.reply('An error occurred while accepting the ride.');
+      }
+    });
+
+    this.bot.action(/reject_ride:(.+)/, async (ctx) => {
+      const rideId = ctx.match[1];
+      await ctx.answerCbQuery('Ride rejected');
+      await ctx.reply(`❌ You rejected ride ${rideId.slice(0, 8)}...`);
+      logger.info(`Driver ${ctx.from.id} rejected ride ${rideId}`);
+    });
   }
 
   private setupHears() {
@@ -239,13 +316,29 @@ export class TelegramBot {
 
   async launch() {
     try {
-      await this.bot.launch();
-      logger.info('Telegram bot started');
-
-      process.once('SIGINT', () => this.bot.stop('SIGINT'));
-      process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+      if (config.telegram.mode === 'webhook' && config.telegram.webhookDomain && this.app) {
+        const webhookUrl = `${config.telegram.webhookDomain}${config.telegram.webhookPath}`;
+        await this.bot.telegram.setWebhook(webhookUrl);
+        this.app.use(config.telegram.webhookPath, this.bot.webhookCallback(config.telegram.webhookPath));
+        logger.info(`Telegram bot started in webhook mode: ${webhookUrl}`);
+      } else {
+        await this.bot.launch();
+        logger.info('Telegram bot started in polling mode');
+      }
+      this.launched = true;
     } catch (error) {
       logger.error('Failed to launch bot:', error);
+    }
+  }
+
+  async stop(signal: string) {
+    if (!this.launched) return;
+    try {
+      await this.bot.stop(signal);
+      this.launched = false;
+      logger.info('Telegram bot stopped');
+    } catch (error) {
+      logger.error('Bot stop error:', error);
     }
   }
 }

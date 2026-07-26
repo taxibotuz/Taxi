@@ -1,11 +1,17 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { v4 as uuid } from 'uuid';
 import { Request } from 'express';
 
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (_req: Request, _file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, path.join(__dirname, '../../uploads'));
+    cb(null, uploadDir);
   },
   filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const ext = path.extname(file.originalname);

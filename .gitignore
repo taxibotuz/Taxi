@@ -7,3 +7,32 @@ build/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+*.~
+
+# Environment
+backend/.env
+frontend/.env
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+backend/logs/*
+!backend/logs/.gitkeep
+
+# SSL
+nginx/ssl/*.pem
+nginx/ssl/*.key
+
+# Docker
+.docker/

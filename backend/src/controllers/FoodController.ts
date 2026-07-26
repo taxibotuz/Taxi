@@ -6,6 +6,22 @@ import { Category } from '../models/Category';
 import { Settings } from '../models/Settings';
 import { logger } from '../config/logger';
 
+const ALLOWED_RESTAURANT_FIELDS = [
+  'name', 'description', 'logo', 'coverImage', 'location', 'phone',
+  'categories', 'workingHours', 'deliveryFee', 'minOrderAmount',
+  'estimatedDeliveryTime', 'cuisine', 'isOpen',
+];
+
+const ALLOWED_PRODUCT_FIELDS = [
+  'name', 'description', 'price', 'discountPrice', 'images',
+  'categoryId', 'restaurantId', 'isAvailable', 'isFeatured',
+  'preparationTime', 'ingredients', 'nutritionalInfo', 'sortOrder',
+];
+
+const ALLOWED_CATEGORY_FIELDS = [
+  'name', 'description', 'image', 'restaurantId', 'isActive', 'sortOrder',
+];
+
 export class FoodController {
   async getRestaurants(req: AuthRequest, res: Response) {
     try {
@@ -75,10 +91,11 @@ export class FoodController {
 
   async createRestaurant(req: AuthRequest, res: Response) {
     try {
-      const restaurant = await Restaurant.create({
-        ...req.body,
-        ownerId: req.user!._id,
-      });
+      const data: Record<string, any> = { ownerId: req.user!._id };
+      for (const key of ALLOWED_RESTAURANT_FIELDS) {
+        if (key in req.body) data[key] = req.body[key];
+      }
+      const restaurant = await Restaurant.create(data);
       return res.status(201).json({ restaurant });
     } catch (error) {
       logger.error('Create restaurant error:', error);
@@ -88,7 +105,11 @@ export class FoodController {
 
   async createProduct(req: AuthRequest, res: Response) {
     try {
-      const product = await Product.create(req.body);
+      const data: Record<string, any> = {};
+      for (const key of ALLOWED_PRODUCT_FIELDS) {
+        if (key in req.body) data[key] = req.body[key];
+      }
+      const product = await Product.create(data);
       return res.status(201).json({ product });
     } catch (error) {
       logger.error('Create product error:', error);
@@ -98,7 +119,11 @@ export class FoodController {
 
   async createCategory(req: AuthRequest, res: Response) {
     try {
-      const category = await Category.create(req.body);
+      const data: Record<string, any> = {};
+      for (const key of ALLOWED_CATEGORY_FIELDS) {
+        if (key in req.body) data[key] = req.body[key];
+      }
+      const category = await Category.create(data);
       return res.status(201).json({ category });
     } catch (error) {
       logger.error('Create category error:', error);

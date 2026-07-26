@@ -41,7 +41,6 @@ const promoSchema = new Schema<IPromoCode>(
   { timestamps: true }
 );
 
-promoSchema.index({ code: 1 });
 promoSchema.index({ isActive: 1, expiresAt: 1 });
 
 export const PromoCode = mongoose.model<IPromoCode>('PromoCode', promoSchema);

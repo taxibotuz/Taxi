@@ -3,22 +3,33 @@ import { config } from '../config';
 import { logger } from '../config/logger';
 
 export class RedisService {
+  private static _instance: RedisService;
   private client: Redis;
   private pubClient: Redis;
   private subClient: Redis;
+  private connected: boolean = false;
 
-  constructor() {
+  private constructor() {
     this.client = new Redis(config.redis.url, { lazyConnect: true });
     this.pubClient = new Redis(config.redis.url, { lazyConnect: true });
     this.subClient = new Redis(config.redis.url, { lazyConnect: true });
   }
 
+  static getInstance(): RedisService {
+    if (!RedisService._instance) {
+      RedisService._instance = new RedisService();
+    }
+    return RedisService._instance;
+  }
+
   async connect(): Promise<void> {
+    if (this.connected) return;
     await Promise.all([
       this.client.connect(),
       this.pubClient.connect(),
       this.subClient.connect(),
     ]);
+    this.connected = true;
     logger.info('Redis connected');
   }
 

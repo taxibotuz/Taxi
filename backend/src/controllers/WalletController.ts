@@ -52,20 +52,20 @@ export class WalletController {
 
   async topUp(req: AuthRequest, res: Response) {
     try {
-      const { amount, method } = req.body;
+      const { amount } = req.body;
 
       if (amount < 1000) {
         return res.status(400).json({ error: 'Minimum top-up is 1000' });
       }
 
-      const wallet = await Wallet.findOne({ userId: req.user!._id });
+      const wallet = await Wallet.findOneAndUpdate(
+        { userId: req.user!._id },
+        { $inc: { balance: amount, totalDeposited: amount } },
+        { new: true }
+      );
       if (!wallet) {
         return res.status(404).json({ error: 'Wallet not found' });
       }
-
-      wallet.balance += amount;
-      wallet.totalDeposited += amount;
-      await wallet.save();
 
       return res.json({
         wallet,

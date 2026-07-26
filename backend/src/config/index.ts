@@ -18,7 +18,7 @@ export const config = {
   },
 
   jwt: {
-    secret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
+    secret: process.env.JWT_SECRET || '',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
 
@@ -26,6 +26,9 @@ export const config = {
     botToken: process.env.TELEGRAM_BOT_TOKEN || '',
     webappUrl: process.env.TELEGRAM_WEBAPP_URL || '',
     adminIds: (process.env.TELEGRAM_ADMIN_IDS || '').split(',').map(Number).filter(Boolean),
+    mode: (process.env.TELEGRAM_MODE || 'polling') as 'polling' | 'webhook',
+    webhookDomain: process.env.TELEGRAM_WEBHOOK_DOMAIN || '',
+    webhookPath: process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram',
   },
 
   payment: {

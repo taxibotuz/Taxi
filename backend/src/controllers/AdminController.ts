@@ -75,10 +75,11 @@ export class AdminController {
 
       if (role) query.role = role;
       if (search) {
+        const escaped = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         query.$or = [
-          { firstName: { $regex: search, $options: 'i' } },
-          { lastName: { $regex: search, $options: 'i' } },
-          { username: { $regex: search, $options: 'i' } },
+          { firstName: { $regex: escaped, $options: 'i' } },
+          { lastName: { $regex: escaped, $options: 'i' } },
+          { username: { $regex: escaped, $options: 'i' } },
         ];
       }
 
@@ -117,10 +118,19 @@ export class AdminController {
     }
   }
 
+  private static readonly ALLOWED_DRIVER_UPDATES = [
+    'status', 'isOnline', 'isAvailable', 'isApproved', 'isSuspended',
+    'isBlacklisted', 'car.brand', 'car.model', 'car.color', 'car.plateNumber',
+    'car.year', 'commission', 'maxRadius', 'maxRidesPerDay',
+  ];
+
   async updateDriver(req: AuthRequest, res: Response) {
     try {
       const { driverId } = req.params;
-      const updates = req.body;
+      const updates: Record<string, any> = {};
+      for (const key of AdminController.ALLOWED_DRIVER_UPDATES) {
+        if (key in req.body) updates[key] = req.body[key];
+      }
 
       const driver = await Driver.findByIdAndUpdate(driverId, updates, { new: true });
       if (!driver) {
@@ -180,9 +190,15 @@ export class AdminController {
 
   async updateSettings(req: AuthRequest, res: Response) {
     try {
+      const allowedKeys = ['pricing', 'search', 'driver', 'features', 'payment', 'maintenance', 'notifications', 'general'];
+      const updates: Record<string, any> = {};
+      for (const key of allowedKeys) {
+        if (key in req.body) updates[key] = req.body[key];
+      }
+
       const settings = await Settings.findOneAndUpdate(
         {},
-        { $set: req.body },
+        { $set: updates },
         { new: true, upsert: true }
       );
 

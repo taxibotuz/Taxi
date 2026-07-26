@@ -1,17 +1,17 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { Order } from '../models/Order';
-import { Driver } from '../models/Driver';
+import { Driver, IDriver } from '../models/Driver';
 import { User } from '../models/User';
 import { PricingService } from '../services/PricingService';
 import { DriverMatchingService } from '../services/DriverMatchingService';
 import { SocketService } from '../sockets/SocketService';
+import { TelegramBot } from '../bot';
 import { RideStatus, PaymentMethod, OrderType } from '../types';
 import { logger } from '../config/logger';
-import mongoose from 'mongoose';
 
 const pricingService = new PricingService();
-const driverMatchingService = new DriverMatchingService();
+const driverMatchingService = DriverMatchingService.getInstance();
 
 export class RideController {
   async createOrder(req: AuthRequest, res: Response) {
@@ -73,6 +73,22 @@ export class RideController {
         offeredPrice,
       });
 
+      const rideData = {
+        rideId: order._id.toString(),
+        pickupAddress,
+        destAddress,
+        distance,
+        price: total,
+      };
+
+      const notifyDriver = async (driver: IDriver) => {
+        const user = await User.findById(driver.userId);
+        if (user?.telegramId) {
+          TelegramBot.getInstance().sendRideRequest(user.telegramId, rideData);
+        }
+        SocketService.emitToDriver(driver._id.toString(), 'ride:request', rideData);
+      };
+
       driverMatchingService.startSearch(
         order._id.toString(),
         pickupLat,
@@ -105,7 +121,8 @@ export class RideController {
             rideId: order._id,
             status: 'timeout',
           });
-        }
+        },
+        notifyDriver
       );
 
       SocketService.emitToUser(req.user!._id, 'search:status', {
@@ -255,7 +272,8 @@ export class RideController {
 
   async estimatePrice(req: AuthRequest, res: Response) {
     try {
-      const { distance, duration } = req.body;
+      const distance = Number(req.query.distance);
+      const duration = Number(req.query.duration);
       const now = new Date();
       const hour = now.getHours();
       const isNight = pricingService.isNightTime(hour);

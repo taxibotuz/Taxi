@@ -5,11 +5,19 @@ import { RedisService } from './RedisService';
 import { logger } from '../config/logger';
 
 export class DriverMatchingService {
+  private static _instance: DriverMatchingService;
   private redis: RedisService;
   private searchTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
-    this.redis = new RedisService();
+    this.redis = RedisService.getInstance();
+  }
+
+  static getInstance(): DriverMatchingService {
+    if (!DriverMatchingService._instance) {
+      DriverMatchingService._instance = new DriverMatchingService();
+    }
+    return DriverMatchingService._instance;
   }
 
   async findNearestDrivers(
@@ -62,7 +70,8 @@ export class DriverMatchingService {
     lat: number,
     lng: number,
     onFound: (driver: IDriver) => void,
-    onTimeout: () => void
+    onTimeout: () => void,
+    onNotifyDriver: (driver: IDriver) => void = () => {}
   ): Promise<void> {
     const settings = await Settings.findOne();
     const timeout = (settings?.search.searchTimeout || 15) * 1000;
@@ -77,27 +86,46 @@ export class DriverMatchingService {
         return;
       }
 
-      const drivers = await this.findNearestDrivers(lat, lng, currentRadius);
+      try {
+        const drivers = await this.findNearestDrivers(lat, lng, currentRadius);
 
-      if (drivers.length > 0) {
-        this.sendRideRequestToDrivers(drivers, rideId, onFound);
-        return;
+        if (drivers.length > 0) {
+          this.sendRideRequestToDrivers(drivers, rideId, onFound, onNotifyDriver);
+          return;
+        }
+
+        currentRadius += expansionStep;
+        logger.info(`Expanding search radius to ${currentRadius}km for ride ${rideId}`);
+
+        const prevTimeout = this.searchTimeouts.get(rideId);
+        if (prevTimeout) clearTimeout(prevTimeout);
+
+        const expansionTimeout = setTimeout(() => {
+          attemptSearch(expansion + 1).catch((err) => {
+            logger.error(`Search expansion error for ride ${rideId}:`, err);
+          });
+        }, timeout);
+        this.searchTimeouts.set(rideId, expansionTimeout);
+      } catch (error) {
+        logger.error(`Search attempt error for ride ${rideId}:`, error);
+        onTimeout();
       }
-
-      currentRadius += expansionStep;
-      logger.info(`Expanding search radius to ${currentRadius}km for ride ${rideId}`);
-
-      setTimeout(() => attemptSearch(expansion + 1), timeout);
     };
 
-    attemptSearch();
+    attemptSearch().catch((err) => {
+      logger.error(`Initial search error for ride ${rideId}:`, err);
+    });
   }
 
   private sendRideRequestToDrivers(
     drivers: IDriver[],
     rideId: string,
-    onFound: (driver: IDriver) => void
+    onFound: (driver: IDriver) => void,
+    onNotifyDriver: (driver: IDriver) => void
   ): void {
+    const prevTimeout = this.searchTimeouts.get(rideId);
+    if (prevTimeout) clearTimeout(prevTimeout);
+
     const timeout = setTimeout(() => {
       logger.info(`Ride request timeout for ${rideId}`);
       this.searchTimeouts.delete(rideId);
@@ -106,10 +134,7 @@ export class DriverMatchingService {
     this.searchTimeouts.set(rideId, timeout);
 
     for (const driver of drivers) {
-      this.redis.publish('ride:request', {
-        rideId,
-        driverId: driver._id.toString(),
-      });
+      onNotifyDriver(driver);
     }
   }
 

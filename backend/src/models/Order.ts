@@ -129,7 +129,7 @@ orderSchema.index({ driverId: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ 'pickup': '2dsphere' });
 orderSchema.index({ 'destination': '2dsphere' });
-orderSchema.index({ orderNumber: 1 });
+
 
 orderSchema.pre('save', async function (next) {
   if (!this.orderNumber) {

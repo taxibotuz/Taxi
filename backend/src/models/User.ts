@@ -36,7 +36,6 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-userSchema.index({ telegramId: 1 });
 userSchema.index({ role: 1 });
 
 export const User = mongoose.model<IUser>('User', userSchema);

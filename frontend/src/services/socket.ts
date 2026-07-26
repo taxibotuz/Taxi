@@ -1,12 +1,14 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
 
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '';
+
 let socket: Socket | null = null;
 
 export const connectSocket = (token: string) => {
   if (socket?.connected) return socket;
 
-  socket = io('/', {
+  socket = io(SOCKET_URL || '/', {
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,

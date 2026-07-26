@@ -1,5 +1,12 @@
 import winston from 'winston';
 import { config } from './index';
+import fs from 'fs';
+import path from 'path';
+
+const logDir = path.resolve('logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
 
 const levels = {
   error: 0,

@@ -3,7 +3,10 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { logger } from '../config/logger';
+import { User } from '../models/User';
 import { Driver } from '../models/Driver';
+import { Order } from '../models/Order';
+import { RideStatus } from '../types';
 import { DriverMatchingService } from '../services/DriverMatchingService';
 
 export class SocketService {
@@ -22,9 +25,9 @@ export class SocketService {
       pingInterval: 25000,
     });
 
-    this.driverMatchingService = new DriverMatchingService();
+    this.driverMatchingService = DriverMatchingService.getInstance();
 
-    this.io.use((socket, next) => {
+    this.io.use(async (socket, next) => {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
       if (!token) {
         return next(new Error('Authentication required'));
@@ -32,7 +35,11 @@ export class SocketService {
 
       try {
         const decoded = jwt.verify(token as string, config.jwt.secret) as any;
-        (socket as any).user = decoded;
+        const user = await User.findById(decoded._id).select('-__v');
+        if (!user || user.isBanned || !user.isActive) {
+          return next(new Error('User not found or inactive'));
+        }
+        socket.data.user = decoded;
         next();
       } catch {
         next(new Error('Invalid token'));
@@ -40,7 +47,7 @@ export class SocketService {
     });
 
     this.io.on('connection', (socket: Socket) => {
-      const user = (socket as any).user;
+      const user = socket.data.user;
       logger.info(`Socket connected: ${user._id} (${user.role})`);
 
       const userId = user._id;
@@ -82,10 +89,31 @@ export class SocketService {
           this.driverMatchingService.acceptRide(
             driver._id.toString(),
             data.rideId,
-            () => {
+            async () => {
+              const order = await Order.findById(data.rideId);
+              if (!order || order.status !== RideStatus.SEARCHING) return;
+
+              order.driverId = driver._id;
+              order.status = RideStatus.ACCEPTED;
+              order.acceptedAt = new Date();
+              await order.save();
+
               this.io.to(`user:${userId}`).emit('ride:accepted', {
                 rideId: data.rideId,
                 driverId: driver._id,
+                driverInfo: {
+                  car: driver.car,
+                  rating: driver.rating,
+                },
+              });
+
+              this.io.to(`user:${order.customerId.toString()}`).emit('ride:accepted', {
+                rideId: data.rideId,
+                driverId: driver._id,
+                driverInfo: {
+                  car: driver.car,
+                  rating: driver.rating,
+                },
               });
             },
             () => {

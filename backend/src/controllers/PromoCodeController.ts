@@ -4,6 +4,12 @@ import { PromoCode } from '../models/PromoCode';
 import { ActivityLog } from '../models/ActivityLog';
 import { logger } from '../config/logger';
 
+const ALLOWED_PROMO_FIELDS = [
+  'code', 'description', 'discountType', 'discountValue', 'maxDiscount',
+  'minOrderAmount', 'usageLimit', 'perUserLimit', 'isActive',
+  'startsAt', 'expiresAt', 'applicableTo',
+];
+
 export class PromoCodeController {
   async validatePromo(req: AuthRequest, res: Response) {
     try {
@@ -47,11 +53,12 @@ export class PromoCodeController {
 
   async createPromo(req: AuthRequest, res: Response) {
     try {
-      const promo = await PromoCode.create({
-        ...req.body,
-        createdBy: req.user!._id,
-        code: req.body.code.toUpperCase(),
-      });
+      const data: Record<string, any> = { createdBy: req.user!._id };
+      for (const key of ALLOWED_PROMO_FIELDS) {
+        if (key in req.body) data[key] = req.body[key];
+      }
+      if (data.code) data.code = String(data.code).toUpperCase();
+      const promo = await PromoCode.create(data);
 
       await ActivityLog.create({
         userId: req.user!._id,

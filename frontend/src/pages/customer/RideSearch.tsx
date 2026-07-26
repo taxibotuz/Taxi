@@ -24,7 +24,7 @@ export default function RideSearch() {
     }
 
     const distance = calcDistance(pickup.lat, pickup.lng, destination.lat, destination.lng);
-    const duration = distance * 5; // rough estimate
+    const duration = Math.round(distance * 2 + 3); // 3 min base + 2 min/km (~30 km/h avg)
 
     ridesApi.estimatePrice({ distance, duration }).then(({ data }) => {
       setPriceEstimate(data.price);
@@ -62,7 +62,7 @@ export default function RideSearch() {
     if (!pickup || !destination || !priceEstimate) return;
 
     const distance = calcDistance(pickup.lat, pickup.lng, destination.lat, destination.lng);
-    const duration = distance * 5;
+    const duration = Math.round(distance * 2 + 3);
 
     try {
       const { data } = await ridesApi.createOrder({
