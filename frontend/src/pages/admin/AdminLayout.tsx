@@ -6,6 +6,8 @@ const adminTabs = [
   { path: '/admin/drivers', label: 'Drivers', icon: '🚗' },
   { path: '/admin/orders', label: 'Orders', icon: '📦' },
   { path: '/admin/users', label: 'Users', icon: '👥' },
+  { path: '/admin/reports', label: 'Reports', icon: '📈' },
+  { path: '/admin/notifications', label: 'Notify', icon: '📢' },
   { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 

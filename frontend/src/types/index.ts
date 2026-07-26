@@ -146,21 +146,59 @@ export interface Product {
 }
 
 export interface Settings {
+  _id?: string;
   pricing: {
     baseFare: number;
     pricePerKm: number;
     pricePerMinute: number;
     minimumFare: number;
     nightCoefficient: number;
+    nightStartHour: number;
+    nightEndHour: number;
     rushCoefficient: number;
+    holidayCoefficient: number;
     airportFee: number;
+    surgeEnabled: boolean;
+  };
+  search: {
+    maxRadius: number;
+    searchTimeout: number;
+    maxDriversPerSearch: number;
+    expansionStep: number;
+    maxExpansions: number;
+  };
+  driver: {
+    commission: number;
+    minRating: number;
+    maxRidesBeforeBreak: number;
   };
   features: {
     foodDelivery: boolean;
     rideScheduling: boolean;
+    referralSystem: boolean;
+    sosButton: boolean;
   };
   payment: {
     enabledMethods: string[];
+    walletEnabled: boolean;
+    cashEnabled: boolean;
+  };
+  maintenance: {
+    isEnabled: boolean;
+    message: string;
+  };
+  notifications: {
+    pushEnabled: boolean;
+    soundEnabled: boolean;
+  };
+  general: {
+    appName: string;
+    contactPhone: string;
+    supportUrl: string;
+    termsUrl: string;
+    privacyUrl: string;
+    defaultLanguage: string;
+    availableLanguages: string[];
   };
 }
 

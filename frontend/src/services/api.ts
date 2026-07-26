@@ -78,9 +78,16 @@ export const notificationsApi = {
 export const adminApi = {
   getDashboard: () => api.get('/admin/dashboard'),
   getUsers: (params?: any) => api.get('/admin/users', { params }),
+  getUserById: (userId: string) => api.get(`/admin/users/${userId}`),
+  deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   getDrivers: (params?: any) => api.get('/admin/drivers', { params }),
+  getDriverById: (driverId: string) => api.get(`/admin/drivers/${driverId}`),
   updateDriver: (id: string, data: any) => api.put(`/admin/drivers/${id}`, data),
+  deleteDriver: (driverId: string) => api.delete(`/admin/drivers/${driverId}`),
   getOrders: (params?: any) => api.get('/admin/orders', { params }),
+  getOrderById: (orderId: string) => api.get(`/admin/orders/${orderId}`),
+  assignDriver: (orderId: string, driverId: string) => api.post(`/admin/orders/${orderId}/assign`, { driverId }),
+  cancelOrder: (orderId: string, reason?: string) => api.post(`/admin/orders/${orderId}/cancel`, { reason }),
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data: any) => api.put('/admin/settings', data),
   assignAdmin: (telegramId: number) => api.post('/admin/assign-admin', { telegramId }),
@@ -88,7 +95,9 @@ export const adminApi = {
   unbanUser: (userId: string) => api.post(`/admin/unban/${userId}`),
   getDriversLocations: () => api.get('/admin/drivers-locations'),
   getRevenue: (params?: any) => api.get('/admin/revenue', { params }),
+  getReports: (params?: any) => api.get('/admin/reports', { params }),
   getLogs: (params?: any) => api.get('/admin/logs', { params }),
+  sendBroadcast: (data: any) => api.post('/admin/notifications/broadcast', data),
 };
 
 export const foodApi = {

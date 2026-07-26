@@ -24,15 +24,21 @@ export class AuthController {
         if (lastName) user.lastName = lastName;
         user.username = username || user.username;
         if (photo_url) user.photoUrl = photo_url;
+        if (config.telegram.adminIds.includes(id) && user.role !== UserRole.ADMIN) {
+          user.role = UserRole.ADMIN;
+        }
         await user.save();
       } else {
+        const role = config.telegram.adminIds.includes(id)
+          ? UserRole.ADMIN
+          : UserRole.CUSTOMER;
         user = await User.create({
           telegramId: id,
           firstName: first_name || 'User',
           lastName,
           username,
           photoUrl: photo_url,
-          role: UserRole.CUSTOMER,
+          role,
         });
 
         await Wallet.create({ userId: user._id });

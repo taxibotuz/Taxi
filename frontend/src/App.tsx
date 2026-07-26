@@ -13,6 +13,13 @@ import DriverLayout from './pages/driver/DriverLayout';
 import DriverDashboard from './pages/driver/DriverDashboard';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminDrivers from './pages/admin/AdminDrivers';
+import AdminSettings from './pages/admin/AdminSettings';
+import AdminReports from './pages/admin/AdminReports';
+import AdminNotifications from './pages/admin/AdminNotifications';
+import AdminRoute from './components/auth/AdminRoute';
 import AuthPage from './pages/auth/AuthPage';
 
 function App() {
@@ -71,6 +78,18 @@ function App() {
     <div className={`h-full w-full ${theme === 'dark' ? 'dark' : ''}`}>
       <AnimatePresence mode="wait">
         <Routes>
+          <Route path="/admin" element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="drivers" element={<AdminDrivers />} />
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="notifications" element={<AdminNotifications />} />
+            </Route>
+          </Route>
+
           {!isAuthenticated ? (
             <>
               <Route path="/auth" element={<AuthPage />} />
@@ -86,15 +105,6 @@ function App() {
             </>
           ) : (
             <>
-              {user?.role === 'admin' && (
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="drivers" element={<div>Drivers</div>} />
-                  <Route path="orders" element={<div>Orders</div>} />
-                  <Route path="users" element={<div>Users</div>} />
-                  <Route path="settings" element={<div>Settings</div>} />
-                </Route>
-              )}
               <Route element={<CustomerLayout />}>
                 <Route path="/" element={<CustomerHome />} />
                 <Route path="/search" element={<RideSearch />} />
