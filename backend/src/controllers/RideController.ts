@@ -79,7 +79,7 @@ export class RideController {
           total,
           promoCode,
         },
-        paymentMethod: paymentMethod || PaymentMethod.CASH,
+        paymentMethod: PaymentMethod.CASH,
         comment,
         offeredPrice,
       });

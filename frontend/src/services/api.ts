@@ -103,6 +103,9 @@ export const adminApi = {
   getReports: (params?: any) => api.get('/admin/reports', { params }),
   getLogs: (params?: any) => api.get('/admin/logs', { params }),
   sendBroadcast: (data: any) => api.post('/admin/notifications/broadcast', data),
+  getDriversPerformance: (params?: any) => api.get('/admin/drivers-performance', { params }),
+  getDriverPerformance: (driverId: string, params?: any) => api.get(`/admin/drivers/${driverId}/performance`, { params }),
+  exportDriversPerformance: (params?: any) => api.get('/admin/drivers-performance/export', { params }),
   getErrorLogs: (params?: any) => api.get('/errors/admin/logs', { params }),
   resolveErrorLog: (id: string) => api.put(`/errors/admin/logs/${id}/resolve`),
 };

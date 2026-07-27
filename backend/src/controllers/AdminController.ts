@@ -724,4 +724,347 @@ export class AdminController {
       return res.status(500).json({ error: 'Failed to send broadcast' });
     }
   }
+
+  async getDriversPerformance(req: AuthRequest, res: Response) {
+    try {
+      const { page = 1, limit = 20, search, startDate, endDate, status } = req.query;
+      const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+      const cappedPage = Math.max(Number(page) || 1, 1);
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      let dateFilter: any = {};
+      if (startDate || endDate) {
+        dateFilter.createdAt = {};
+        if (startDate) dateFilter.createdAt.$gte = new Date(startDate as string);
+        if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
+      }
+
+      let driverQuery: any = {};
+      if (status) driverQuery.status = status;
+
+      if (search) {
+        const escaped = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const matchedUsers = await User.find({
+          $or: [
+            { firstName: { $regex: escaped, $options: 'i' } },
+            { lastName: { $regex: escaped, $options: 'i' } },
+            { phone: { $regex: escaped, $options: 'i' } },
+            { telegramId: isNaN(Number(search)) ? -1 : Number(search) },
+          ],
+        }).select('_id');
+        const userIds = matchedUsers.map((u) => u._id);
+        driverQuery.userId = { $in: userIds };
+      }
+
+      const allDrivers = await Driver.find(driverQuery)
+        .populate('userId', 'firstName lastName photoUrl phone telegramId username')
+        .sort({ createdAt: -1 });
+
+      const driverIds = allDrivers.map((d) => d._id);
+
+      const baseMatch: any = { driverId: { $in: driverIds }, ...dateFilter };
+
+      const [completedOrders, cancelledOrders, todayOrders, weekOrders, monthOrders] = await Promise.all([
+        Order.aggregate([
+          { $match: { ...baseMatch, status: RideStatus.COMPLETED } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { ...baseMatch, status: RideStatus.CANCELLED } },
+          { $group: { _id: '$driverId', count: { $sum: 1 } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: today } } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: weekStart } } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+      ]);
+
+      const acceptedOrders = await Order.aggregate([
+        { $match: { ...baseMatch, status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS, RideStatus.COMPLETED] } } },
+        { $group: { _id: '$driverId', count: { $sum: 1 } } },
+      ]);
+
+      const buildMap = (arr: any[]) => {
+        const map: Record<string, any> = {};
+        arr.forEach((item) => { map[item._id.toString()] = item; });
+        return map;
+      };
+
+      const completedMap = buildMap(completedOrders);
+      const cancelledMap = buildMap(cancelledOrders);
+      const acceptedMap = buildMap(acceptedOrders);
+      const todayMap = buildMap(todayOrders);
+      const weekMap = buildMap(weekOrders);
+      const monthMap = buildMap(monthOrders);
+
+      const total = allDrivers.length;
+      const paginatedDrivers = allDrivers.slice((cappedPage - 1) * cappedLimit, cappedPage * cappedLimit);
+
+      const drivers = paginatedDrivers.map((driver) => {
+        const did = driver._id.toString();
+        const completed = completedMap[did] || { count: 0, earnings: 0 };
+        const cancelled = cancelledMap[did] || { count: 0 };
+        const accepted = acceptedMap[did] || { count: 0 };
+        const today = todayMap[did] || { count: 0, earnings: 0 };
+        const week = weekMap[did] || { count: 0, earnings: 0 };
+        const month = monthMap[did] || { count: 0, earnings: 0 };
+
+        return {
+          _id: driver._id,
+          userId: driver.userId,
+          status: driver.status,
+          isOnline: driver.isOnline,
+          isApproved: driver.isApproved,
+          rating: driver.rating,
+          car: driver.car,
+          subscription: driver.subscription,
+          currentLocation: driver.currentLocation,
+          totalRides: accepted.count,
+          completedRides: completed.count,
+          cancelledRides: cancelled.count,
+          totalEarnings: completed.earnings,
+          todayRides: today.count,
+          todayEarnings: today.earnings,
+          weekRides: week.count,
+          weeklyEarnings: week.earnings,
+          monthRides: month.count,
+          monthlyEarnings: month.earnings,
+          lastLocationUpdate: driver.currentLocation?.updatedAt,
+        };
+      });
+
+      return res.json({ drivers, total, page: cappedPage, pages: Math.ceil(total / cappedLimit) });
+    } catch (error) {
+      logger.error('Get drivers performance error:', error);
+      return res.status(500).json({ error: 'Failed to get drivers performance' });
+    }
+  }
+
+  async getDriverPerformance(req: AuthRequest, res: Response) {
+    try {
+      const { driverId } = req.params;
+      const { startDate, endDate } = req.query;
+
+      const driver = await Driver.findById(driverId)
+        .populate('userId', 'firstName lastName photoUrl phone telegramId username language');
+
+      if (!driver) return res.status(404).json({ error: 'Driver not found' });
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      let dateFilter: any = {};
+      if (startDate || endDate) {
+        dateFilter.createdAt = {};
+        if (startDate) dateFilter.createdAt.$gte = new Date(startDate as string);
+        if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
+      }
+
+      const baseMatch = { driverId: driver._id, ...dateFilter };
+
+      const [
+        totalCompleted, totalCancelled, totalAccepted,
+        todayCompleted, weekCompleted, monthCompleted,
+        todayEarnings, weekEarnings, monthEarnings, totalEarnings,
+        rideHistory, recentOrders,
+      ] = await Promise.all([
+        Order.countDocuments({ ...baseMatch, status: RideStatus.COMPLETED }),
+        Order.countDocuments({ ...baseMatch, status: RideStatus.CANCELLED }),
+        Order.countDocuments({
+          ...baseMatch,
+          status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS, RideStatus.COMPLETED] },
+        }),
+        Order.countDocuments({ driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: today } }),
+        Order.countDocuments({ driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: weekStart } }),
+        Order.countDocuments({ driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } }),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: today } } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: weekStart } } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: driver._id, status: RideStatus.COMPLETED } },
+          { $group: { _id: null, total: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: driver._id, ...dateFilter } },
+          {
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+              completed: { $sum: { $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, 1, 0] } },
+              cancelled: { $sum: { $cond: [{ $eq: ['$status', RideStatus.CANCELLED] }, 1, 0] } },
+              accepted: {
+                $sum: {
+                  $cond: [
+                    { $in: ['$status', [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS, RideStatus.COMPLETED]] },
+                    1, 0,
+                  ],
+                },
+              },
+              earnings: { $sum: { $cond: [{ $eq: ['$status', RideStatus.COMPLETED] }, '$pricing.total', 0] } },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+        Order.find({ driverId: driver._id, ...dateFilter })
+          .populate('customerId', 'firstName lastName phone')
+          .sort({ createdAt: -1 })
+          .limit(50),
+      ]);
+
+      const avgStats = await Order.aggregate([
+        { $match: { driverId: driver._id, status: RideStatus.COMPLETED } },
+        {
+          $group: {
+            _id: null,
+            avgDuration: { $avg: '$duration' },
+            avgDistance: { $avg: '$distance' },
+            avgFare: { $avg: '$pricing.total' },
+          },
+        },
+      ]);
+
+      const avgResponseTime = await Order.aggregate([
+        { $match: { driverId: driver._id, acceptedAt: { $ne: null }, createdAt: { $ne: null } } },
+        {
+          $project: {
+            responseTime: { $subtract: ['$acceptedAt', '$createdAt'] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            avgResponseMs: { $avg: '$responseTime' },
+          },
+        },
+      ]);
+
+      return res.json({
+        driver,
+        stats: {
+          totalAccepted: totalAccepted,
+          totalCompleted: totalCompleted,
+          totalCancelled: totalCancelled,
+          todayRides: todayCompleted,
+          weekRides: weekCompleted,
+          monthRides: monthCompleted,
+          todayEarnings: todayEarnings[0]?.total || 0,
+          weeklyEarnings: weekEarnings[0]?.total || 0,
+          monthlyEarnings: monthEarnings[0]?.total || 0,
+          totalEarnings: totalEarnings[0]?.total || 0,
+          avgDuration: avgStats[0]?.avgDuration || 0,
+          avgDistance: avgStats[0]?.avgDistance || 0,
+          avgFare: avgStats[0]?.avgFare || 0,
+          avgResponseTimeMs: avgResponseTime[0]?.avgResponseMs || 0,
+        },
+        rideHistory,
+        timeline: rideHistory,
+      });
+    } catch (error) {
+      logger.error('Get driver performance error:', error);
+      return res.status(500).json({ error: 'Failed to get driver performance' });
+    }
+  }
+
+  async exportDriversPerformanceCSV(req: AuthRequest, res: Response) {
+    try {
+      const drivers = await Driver.find()
+        .populate('userId', 'firstName lastName phone telegramId');
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const driverIds = drivers.map((d) => d._id);
+
+      const [completedOrders, cancelledOrders, todayOrders, weekOrders, monthOrders] = await Promise.all([
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.CANCELLED } },
+          { $group: { _id: '$driverId', count: { $sum: 1 } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: today } } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: weekStart } } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+        Order.aggregate([
+          { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } } },
+          { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
+        ]),
+      ]);
+
+      const buildMap = (arr: any[]) => {
+        const map: Record<string, any> = {};
+        arr.forEach((item) => { map[item._id.toString()] = item; });
+        return map;
+      };
+
+      const completedMap = buildMap(completedOrders);
+      const cancelledMap = buildMap(cancelledOrders);
+      const todayMap = buildMap(todayOrders);
+      const weekMap = buildMap(weekOrders);
+      const monthMap = buildMap(monthOrders);
+
+      const rows = drivers.map((driver) => {
+        const did = driver._id.toString();
+        const completed = completedMap[did] || { count: 0, earnings: 0 };
+        const cancelled = cancelledMap[did] || { count: 0 };
+        const today = todayMap[did] || { count: 0, earnings: 0 };
+        const week = weekMap[did] || { count: 0, earnings: 0 };
+        const month = monthMap[did] || { count: 0, earnings: 0 };
+        const user = driver.userId as any;
+        return {
+          name: `${user?.firstName || ''} ${user?.lastName || ''}`,
+          phone: user?.phone || '',
+          telegramId: user?.telegramId || '',
+          status: driver.isOnline ? 'Online' : 'Offline',
+          rating: driver.rating,
+          totalRides: completed.count,
+          cancelledRides: cancelled.count,
+          totalEarnings: completed.earnings,
+          todayRides: today.count,
+          todayEarnings: today.earnings,
+          weeklyEarnings: week.earnings,
+          monthlyEarnings: month.earnings,
+        };
+      });
+
+      return res.json({ data: rows });
+    } catch (error) {
+      logger.error('Export drivers performance error:', error);
+      return res.status(500).json({ error: 'Failed to export drivers performance' });
+    }
+  }
 }

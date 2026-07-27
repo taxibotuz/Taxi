@@ -104,9 +104,9 @@ const settingsSchema = new Schema<ISettings>({
     enabledMethods: {
       type: [String],
       enum: Object.values(PaymentMethod),
-      default: ['cash', 'click', 'payme', 'uzum', 'card', 'wallet'],
+      default: [PaymentMethod.CASH],
     },
-    walletEnabled: { type: Boolean, default: true },
+    walletEnabled: { type: Boolean, default: false },
     cashEnabled: { type: Boolean, default: true },
   },
   district: {

@@ -48,7 +48,7 @@ export const rideSchemas = {
       destAddress: z.string().optional(),
       distance: z.number({ required_error: 'Distance is required' }).min(0),
       duration: z.number({ required_error: 'Duration is required' }).min(0),
-      paymentMethod: z.enum(['cash', 'click', 'payme', 'uzum', 'card', 'wallet']).optional(),
+      paymentMethod: z.enum(['cash']).optional(),
       comment: z.string().max(500).optional(),
       offeredPrice: z.number().min(0).optional(),
       promoCode: z.string().optional(),

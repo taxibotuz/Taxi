@@ -19,6 +19,7 @@ export default function AdminLayout() {
     { path: '/admin/notifications', label: t('admin_notify'), icon: '📢' },
     { path: '/admin/settings', label: t('admin_settings'), icon: '⚙️' },
     { path: '/admin/error-logs', label: t('admin_error_logs'), icon: '🛡️' },
+    { path: '/admin/drivers-performance', label: t('driver_performance'), icon: '📊' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

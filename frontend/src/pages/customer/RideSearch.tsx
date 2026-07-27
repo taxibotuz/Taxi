@@ -79,12 +79,7 @@ export default function RideSearch() {
     paymentMethod === method ? 'bg-primary-500 text-white shadow-sm' : 'bg-white/5 text-gray-400 hover:bg-white/10';
 
   const paymentMethods = [
-    { value: 'cash', label: t('cash'), desc: t('cash_desc') },
-    { value: 'click', label: t('click'), desc: t('click_desc') },
-    { value: 'payme', label: t('payme'), desc: t('payme_desc') },
-    { value: 'uzum', label: t('uzum'), desc: t('uzum_desc') },
-    { value: 'card', label: t('card'), desc: t('card_desc') },
-    { value: 'wallet', label: t('wallet'), desc: t('wallet_desc') },
+    { value: 'cash', label: '💵 Naqd', desc: t('cash_desc') },
   ];
 
   return (
@@ -185,19 +180,15 @@ export default function RideSearch() {
               />
             </div>
 
-            {/* Payment Methods */}
+            {/* Payment Method */}
             <div>
               <label className="text-xs text-gray-400 mb-2 block">{t('payment_method')}</label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {paymentMethods.map((m) => (
-                  <button
-                    key={m.value}
-                    onClick={() => setPaymentMethod(m.value)}
-                    className={`p-2.5 rounded-input text-[11px] font-medium transition-all active:scale-[0.97] ${selectedMethod(m.value)}`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 p-3 rounded-input bg-primary-500/10 border border-primary-500/30">
+                <span className="text-lg">💵</span>
+                <div>
+                  <span className="text-sm font-medium text-primary-400">To'lov turi: Naqd</span>
+                  <p className="text-[10px] text-gray-500">{t('cash_desc')}</p>
+                </div>
               </div>
             </div>
 

@@ -24,11 +24,6 @@ export enum RideStatus {
 
 export enum PaymentMethod {
   CASH = 'cash',
-  CLICK = 'click',
-  PAYME = 'payme',
-  UZUM = 'uzum',
-  CARD = 'card',
-  WALLET = 'wallet',
 }
 
 export enum OrderType {

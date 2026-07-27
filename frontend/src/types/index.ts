@@ -70,7 +70,7 @@ export interface Order {
     promoCode?: string;
     total: number;
   };
-  paymentMethod: 'cash' | 'click' | 'payme' | 'uzum' | 'card' | 'wallet';
+  paymentMethod: 'cash';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   comment?: string;
   offeredPrice?: number;

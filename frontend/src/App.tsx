@@ -23,6 +23,8 @@ import AdminReports from './pages/admin/AdminReports';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminErrorLogs from './pages/admin/AdminErrorLogs';
 import AdminSubscriptions from './pages/admin/AdminSubscriptions';
+import AdminDriverPerformance from './pages/admin/AdminDriverPerformance';
+import DriverPerformanceDetail from './pages/admin/DriverPerformanceDetail';
 import AdminRoute from './components/auth/AdminRoute';
 import AuthPage from './pages/auth/AuthPage';
 
@@ -119,6 +121,8 @@ function App() {
               <Route path="notifications" element={<AdminNotifications />} />
               <Route path="subscriptions" element={<AdminSubscriptions />} />
               <Route path="error-logs" element={<AdminErrorLogs />} />
+              <Route path="drivers-performance" element={<AdminDriverPerformance />} />
+              <Route path="drivers-performance/:driverId" element={<DriverPerformanceDetail />} />
             </Route>
           </Route>
 

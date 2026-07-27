@@ -32,6 +32,9 @@ router.post('/ban/:userId', authenticate, requireRole('admin'), controller.banUs
 router.post('/unban/:userId', authenticate, requireRole('admin'), controller.unbanUser.bind(controller));
 
 router.get('/drivers-locations', authenticate, requireRole('admin'), controller.getDriversLocations.bind(controller));
+router.get('/drivers-performance', authenticate, requireRole('admin'), controller.getDriversPerformance.bind(controller));
+router.get('/drivers-performance/export', authenticate, requireRole('admin'), controller.exportDriversPerformanceCSV.bind(controller));
+router.get('/drivers/:driverId/performance', authenticate, requireRole('admin'), controller.getDriverPerformance.bind(controller));
 router.get('/revenue', authenticate, requireRole('admin'), controller.getRevenueReport.bind(controller));
 router.get('/reports', authenticate, requireRole('admin'), controller.getReports.bind(controller));
 router.get('/logs', authenticate, requireRole('admin'), controller.getActivityLogs.bind(controller));
