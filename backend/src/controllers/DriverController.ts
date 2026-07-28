@@ -76,13 +76,15 @@ export class DriverController {
         return res.status(403).json({ error: 'Driver not approved yet' });
       }
 
-      if (driver.subscription && driver.subscription.active && driver.subscription.expiresAt) {
-        if (new Date(driver.subscription.expiresAt) <= new Date()) {
-          driver.subscription.active = false;
-          await driver.save();
-          return res.status(403).json({ error: 'Subscription expired. Please renew to go online.' });
-        }
-      }
+      // TODO: Re-enable subscription enforcement before production release.
+      // The subscription check is disabled in test mode so all approved drivers can go online.
+      // if (driver.subscription && driver.subscription.active && driver.subscription.expiresAt) {
+      //   if (new Date(driver.subscription.expiresAt) <= new Date()) {
+      //     driver.subscription.active = false;
+      //     await driver.save();
+      //     return res.status(403).json({ error: 'Subscription expired. Please renew to go online.' });
+      //   }
+      // }
 
       driver.isOnline = !driver.isOnline;
       driver.status = driver.isOnline ? DriverStatus.ONLINE : DriverStatus.OFFLINE;

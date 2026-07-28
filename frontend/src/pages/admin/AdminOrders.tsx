@@ -183,7 +183,7 @@ export default function AdminOrders() {
                 { label: t('distance'), value: `${detail.distance} km` },
                 { label: t('duration'), value: `${detail.duration} min` },
                 { label: t('total_label'), value: `${detail.pricing?.total?.toLocaleString()} ${t('sum')}` },
-                { label: t('payment'), value: '💵 Naqd' },
+                { label: t('payment'), value: `💵 ${t('cash')}` },
                 { label: t('created'), value: new Date(detail.createdAt).toLocaleString() },
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0 gap-3">

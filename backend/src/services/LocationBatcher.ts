@@ -40,8 +40,12 @@ export class LocationBatcher {
 
     this.lastUpdate.set(driverId, Date.now());
 
-    this.redis.geoAdd('drivers:locations', lng, lat, driverId).catch(() => {});
-    this.redis.set(`driver:${driverId}:loc`, JSON.stringify({ lng, lat, t: Date.now() }), 60).catch(() => {});
+    this.redis.geoAdd('drivers:locations', lng, lat, driverId).catch((err) => {
+      logger.warn(`Redis geoAdd failed for driver ${driverId}:`, err.message);
+    });
+    this.redis.set(`driver:${driverId}:loc`, JSON.stringify({ lng, lat, t: Date.now() }), 60).catch((err) => {
+      logger.warn(`Redis set location failed for driver ${driverId}:`, err.message);
+    });
   }
 
   isStale(driverId: string): boolean {
@@ -66,7 +70,6 @@ export class LocationBatcher {
     if (this.pending.size === 0) return;
 
     const updates = Array.from(this.pending.values());
-    this.pending.clear();
 
     const bulkOps = updates.map((u) => ({
       updateOne: {
@@ -82,6 +85,7 @@ export class LocationBatcher {
 
     try {
       await Driver.bulkWrite(bulkOps, { ordered: false });
+      this.pending.clear();
       logger.debug(`Flushed ${updates.length} driver locations to MongoDB`);
     } catch (error) {
       logger.error('MongoDB location flush error:', error);
@@ -93,6 +97,8 @@ export class LocationBatcher {
       clearInterval(this.flushInterval);
       this.flushInterval = null;
     }
-    this.flush().catch(() => {});
+    this.flush().catch((err) => {
+      logger.warn('Location batcher final flush failed:', err.message);
+    });
   }
 }

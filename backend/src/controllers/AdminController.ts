@@ -769,7 +769,7 @@ export class AdminController {
 
       const baseMatch: any = { driverId: { $in: driverIds }, ...dateFilter };
 
-      const [completedOrders, cancelledOrders, todayOrders, weekOrders, monthOrders] = await Promise.all([
+      const [completedOrders, cancelledOrders, todayOrders, weekOrders, monthOrders, rejectedOrders] = await Promise.all([
         Order.aggregate([
           { $match: { ...baseMatch, status: RideStatus.COMPLETED } },
           { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
@@ -790,11 +790,23 @@ export class AdminController {
           { $match: { driverId: { $in: driverIds }, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } } },
           { $group: { _id: '$driverId', count: { $sum: 1 }, earnings: { $sum: '$pricing.total' } } },
         ]),
+        Order.aggregate([
+          { $match: { rejectedDrivers: { $in: driverIds }, ...dateFilter } },
+          { $unwind: '$rejectedDrivers' },
+          { $match: { rejectedDrivers: { $in: driverIds } } },
+          { $group: { _id: '$rejectedDrivers', count: { $sum: 1 } } },
+        ]),
       ]);
 
       const acceptedOrders = await Order.aggregate([
         { $match: { ...baseMatch, status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS, RideStatus.COMPLETED] } } },
         { $group: { _id: '$driverId', count: { $sum: 1 } } },
+      ]);
+
+      const avgResponseAgg = await Order.aggregate([
+        { $match: { driverId: { $in: driverIds }, acceptedAt: { $ne: null }, createdAt: { $ne: null } } },
+        { $project: { driverId: 1, responseTime: { $subtract: ['$acceptedAt', '$createdAt'] } } },
+        { $group: { _id: '$driverId', avgResponseMs: { $avg: '$responseTime' } } },
       ]);
 
       const buildMap = (arr: any[]) => {
@@ -806,9 +818,11 @@ export class AdminController {
       const completedMap = buildMap(completedOrders);
       const cancelledMap = buildMap(cancelledOrders);
       const acceptedMap = buildMap(acceptedOrders);
+      const rejectedMap = buildMap(rejectedOrders);
       const todayMap = buildMap(todayOrders);
       const weekMap = buildMap(weekOrders);
       const monthMap = buildMap(monthOrders);
+      const avgResponseMap = buildMap(avgResponseAgg);
 
       const total = allDrivers.length;
       const paginatedDrivers = allDrivers.slice((cappedPage - 1) * cappedLimit, cappedPage * cappedLimit);
@@ -818,9 +832,18 @@ export class AdminController {
         const completed = completedMap[did] || { count: 0, earnings: 0 };
         const cancelled = cancelledMap[did] || { count: 0 };
         const accepted = acceptedMap[did] || { count: 0 };
+        const rejected = rejectedMap[did] || { count: 0 };
         const today = todayMap[did] || { count: 0, earnings: 0 };
         const week = weekMap[did] || { count: 0, earnings: 0 };
         const month = monthMap[did] || { count: 0, earnings: 0 };
+        const avgResp = avgResponseMap[did] || { avgResponseMs: 0 };
+
+        const acceptanceRate = accepted.count + rejected.count > 0
+          ? Math.round((accepted.count / (accepted.count + rejected.count)) * 100)
+          : 0;
+        const cancellationRate = accepted.count + cancelled.count > 0
+          ? Math.round((cancelled.count / (accepted.count + cancelled.count)) * 100)
+          : 0;
 
         return {
           _id: driver._id,
@@ -835,6 +858,7 @@ export class AdminController {
           totalRides: accepted.count,
           completedRides: completed.count,
           cancelledRides: cancelled.count,
+          rejectedRides: rejected.count,
           totalEarnings: completed.earnings,
           todayRides: today.count,
           todayEarnings: today.earnings,
@@ -842,7 +866,10 @@ export class AdminController {
           weeklyEarnings: week.earnings,
           monthRides: month.count,
           monthlyEarnings: month.earnings,
-          lastLocationUpdate: driver.currentLocation?.updatedAt,
+          acceptanceRate,
+          cancellationRate,
+          avgResponseTimeMs: avgResp.avgResponseMs || 0,
+          lastOnline: driver.currentLocation?.updatedAt || driver.updatedAt,
         };
       });
 
@@ -879,7 +906,7 @@ export class AdminController {
       const baseMatch = { driverId: driver._id, ...dateFilter };
 
       const [
-        totalCompleted, totalCancelled, totalAccepted,
+        totalCompleted, totalCancelled, totalAccepted, totalRejected,
         todayCompleted, weekCompleted, monthCompleted,
         todayEarnings, weekEarnings, monthEarnings, totalEarnings,
         rideHistory, recentOrders,
@@ -890,6 +917,7 @@ export class AdminController {
           ...baseMatch,
           status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS, RideStatus.COMPLETED] },
         }),
+        Order.countDocuments({ ...baseMatch, rejectedDrivers: driver._id }),
         Order.countDocuments({ driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: today } }),
         Order.countDocuments({ driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: weekStart } }),
         Order.countDocuments({ driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: monthStart } }),
@@ -968,6 +996,11 @@ export class AdminController {
           totalAccepted: totalAccepted,
           totalCompleted: totalCompleted,
           totalCancelled: totalCancelled,
+          totalRejected: totalRejected,
+          acceptanceRate: totalAccepted + totalRejected > 0
+            ? Math.round((totalAccepted / (totalAccepted + totalRejected)) * 100) : 0,
+          cancellationRate: totalAccepted + totalCancelled > 0
+            ? Math.round((totalCancelled / (totalAccepted + totalCancelled)) * 100) : 0,
           todayRides: todayCompleted,
           weekRides: weekCompleted,
           monthRides: monthCompleted,

@@ -70,7 +70,51 @@ export class GeoService {
     if (!inside) {
       return {
         valid: false,
-        error: "TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.",
+        error: 'Bu hudud TaxiGo xizmat ko\'rsatish zonasidan tashqarida.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  static validatePickupLocation(
+    lat: number,
+    lng: number,
+  ): { valid: true } | { valid: false; error: string; field: string } {
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return { valid: false, error: 'Invalid coordinates', field: 'pickup' };
+    }
+
+    const polygon = GeoService.getBoundary();
+    const inside = GeoService.isInsidePolygon({ lat, lng }, polygon);
+
+    if (!inside) {
+      return {
+        valid: false,
+        error: "Bu hudud TaxiGo xizmat ko'rsatish zonasidan tashqarida.",
+        field: 'pickup',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  static validateDestinationLocation(
+    lat: number,
+    lng: number,
+  ): { valid: true } | { valid: false; error: string; field: string } {
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return { valid: false, error: 'Invalid coordinates', field: 'destination' };
+    }
+
+    const polygon = GeoService.getBoundary();
+    const inside = GeoService.isInsidePolygon({ lat, lng }, polygon);
+
+    if (!inside) {
+      return {
+        valid: false,
+        error: "Belgilangan manzil xizmat ko'rsatish hududidan tashqarida.",
+        field: 'destination',
       };
     }
 

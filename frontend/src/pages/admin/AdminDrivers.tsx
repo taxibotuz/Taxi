@@ -4,6 +4,15 @@ import { adminApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../../i18n';
 
+function escapeCsvField(field: string | number | undefined | null): string {
+  if (field === undefined || field === null) return '';
+  const str = String(field);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 interface DriverForm {
   status: string;
   isApproved: boolean;
@@ -31,6 +40,16 @@ const initialForm: DriverForm = {
   isBlacklisted: false, commission: 15, carBrand: '', carModel: '',
   carColor: '', carPlate: '', carYear: 2020, carSeats: 4, rating: 5,
 };
+
+function DriverInputField({ label, value, onChange, type = 'text', step }: { label: string; value: any; onChange: (v: any) => void; type?: string; step?: string }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-400 block mb-1">{label}</label>
+      <input type={type} step={step} value={value} onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+        className="w-full bg-white/5 border border-white/10 rounded-input px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder-gray-500" />
+    </div>
+  );
+}
 
 export default function AdminDrivers() {
   const { t } = useTranslation();
@@ -159,7 +178,7 @@ export default function AdminDrivers() {
       setAddState(s => ({
         ...s,
         userId: user._id,
-        userInfo: `${user.firstName || ''} ${user.lastName || ''} (@${user.username || 'no username'}) • ${user.phone || 'no phone'}`,
+        userInfo: `${user.firstName || ''} ${user.lastName || ''} (@${user.username || t('no_username')}) • ${user.phone || t('no_phone')}`,
       }));
       toast.success(t('user_found'));
     } catch {
@@ -177,21 +196,23 @@ export default function AdminDrivers() {
   const exportCSV = () => {
     const headers = 'Name,Phone,Car,Plate,Status,Rating,Rides,Earnings,Online\n';
     const rows = drivers.map((d: any) =>
-      `"${d.userId?.firstName || ''} ${d.userId?.lastName || ''}",${d.userId?.phone || ''},${d.car?.brand || ''} ${d.car?.model || ''},${d.car?.plateNumber || ''},${d.status},${d.rating},${d.totalRides},${d.totalEarnings},${d.isOnline}`
+      [
+        escapeCsvField(`${d.userId?.firstName || ''} ${d.userId?.lastName || ''}`),
+        escapeCsvField(d.userId?.phone),
+        escapeCsvField(`${d.car?.brand || ''} ${d.car?.model || ''}`),
+        escapeCsvField(d.car?.plateNumber),
+        escapeCsvField(d.status),
+        escapeCsvField(d.rating),
+        escapeCsvField(d.totalRides),
+        escapeCsvField(d.totalEarnings),
+        escapeCsvField(d.isOnline),
+      ].join(',')
     ).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'drivers.csv'; a.click();
     URL.revokeObjectURL(url);
   };
-
-  const InputField = ({ label, value, onChange, type = 'text', step }: { label: string; value: any; onChange: (v: any) => void; type?: string; step?: string }) => (
-    <div>
-      <label className="text-xs text-gray-400 block mb-1">{label}</label>
-      <input type={type} step={step} value={value} onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
-        className="w-full bg-white/5 border border-white/10 rounded-input px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder-gray-500" />
-    </div>
-  );
 
   return (
     <div className="space-y-4">
@@ -322,20 +343,20 @@ export default function AdminDrivers() {
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t('car_brand')} value={form.carBrand} onChange={v => setForm({ ...form, carBrand: v })} />
-                <InputField label={t('car_model')} value={form.carModel} onChange={v => setForm({ ...form, carModel: v })} />
+                <DriverInputField label={t('car_brand')} value={form.carBrand} onChange={v => setForm({ ...form, carBrand: v })} />
+                <DriverInputField label={t('car_model')} value={form.carModel} onChange={v => setForm({ ...form, carModel: v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t('car_color')} value={form.carColor} onChange={v => setForm({ ...form, carColor: v })} />
-                <InputField label={t('car_plate')} value={form.carPlate} onChange={v => setForm({ ...form, carPlate: v })} />
+                <DriverInputField label={t('car_color')} value={form.carColor} onChange={v => setForm({ ...form, carColor: v })} />
+                <DriverInputField label={t('car_plate')} value={form.carPlate} onChange={v => setForm({ ...form, carPlate: v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t('car_year')} value={form.carYear} onChange={v => setForm({ ...form, carYear: +v })} type="number" />
-                <InputField label={t('seats')} value={form.carSeats} onChange={v => setForm({ ...form, carSeats: +v })} type="number" />
+                <DriverInputField label={t('car_year')} value={form.carYear} onChange={v => setForm({ ...form, carYear: +v })} type="number" />
+                <DriverInputField label={t('seats')} value={form.carSeats} onChange={v => setForm({ ...form, carSeats: +v })} type="number" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <InputField label={t('commission')} value={form.commission} onChange={v => setForm({ ...form, commission: +v })} type="number" />
-                <InputField label={t('rating_label')} value={form.rating} onChange={v => setForm({ ...form, rating: +v })} type="number" step="0.1" />
+                <DriverInputField label={t('commission')} value={form.commission} onChange={v => setForm({ ...form, commission: +v })} type="number" />
+                <DriverInputField label={t('rating_label')} value={form.rating} onChange={v => setForm({ ...form, rating: +v })} type="number" step="0.1" />
               </div>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">

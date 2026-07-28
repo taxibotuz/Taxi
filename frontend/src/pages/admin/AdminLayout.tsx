@@ -37,7 +37,7 @@ export default function AdminLayout() {
               <h1 className="font-bold text-sm">{t('admin_panel')}</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] text-gray-500">Online</span>
+                <span className="text-[10px] text-gray-500">{t('online')}</span>
               </div>
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function AdminLayout() {
 
           <div className="hidden lg:flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-gray-500">System Active</span>
+            <span className="text-xs text-gray-500">{t('system_active')}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-2">

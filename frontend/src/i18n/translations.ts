@@ -17,11 +17,11 @@ const translations: Record<Language, Record<string, string>> = {
     inside: '✓ Ichida',
     outside: '✗ Tashqarida',
     order_taxi: 'Taksi chaqirish',
-    taxi_only_tortkol: "TaxiGo hozircha faqat To'rtko'l tumani hududida ishlaydi.",
-    pickup_outside_district: "Olib ketish manzili To'rtko'l tumanidan tashqarida",
-    dest_outside_district: "Yetkazish manzili To'rtko'l tumanidan tashqarida",
-    pickup_outside_service: 'Olib ketish manzili xizmat ko\'rsatish hududidan tashqarida',
-    dest_outside_service: 'Yetkazish manzili xizmat ko\'rsatish hududidan tashqarida',
+    taxi_only_tortkol: "Bu hudud TaxiGo xizmat ko'rsatish zonasidan tashqarida.",
+    pickup_outside_district: "Bu hudud TaxiGo xizmat ko'rsatish zonasidan tashqarida.",
+    dest_outside_district: "Belgilangan manzil xizmat ko'rsatish hududidan tashqarida.",
+    pickup_outside_service: "Bu hudud TaxiGo xizmat ko'rsatish zonasidan tashqarida.",
+    dest_outside_service: "Belgilangan manzil xizmat ko'rsatish hududidan tashqarida.",
 
     // RideSearch
     price_breakdown: 'Narx tarkibi',
@@ -55,6 +55,12 @@ const translations: Record<Language, Record<string, string>> = {
     sos: '🆘 SOS',
     no_drivers_found: 'Haydovchilar topilmadi. Qaytadan urinib ko\'ring.',
     failed_create_order: 'Buyurtma yaratishda xatolik',
+    ride_completed: 'Safar yakunlandi!',
+    ride_cancelled: 'Safar bekor qilindi',
+    thank_you: 'Safar uchun rahmat',
+    driver_arrived: 'Haydovchi yetib keldi!',
+    ride_started: 'Sayohat boshlandi',
+    failed_get_estimate: 'Narx hisoblanmadi',
 
     // Ride History
     ride_history: 'Safarlar tarixi',
@@ -424,6 +430,46 @@ const translations: Record<Language, Record<string, string>> = {
     subscription_expired_warning: 'Obuna muddatingiz tugagan! Online bo\'lish uchun obunani yangilang.',
     manage_subscriptions: 'Obunalarni boshqarish',
     grant_subscription: 'Obuna berish',
+
+    // Subscription Management
+    plan_created: 'Reja yaratildi',
+    failed_create_plan: 'Reja yaratilmadi',
+    plan_updated: 'Reja yangilandi',
+    failed_update_plan: 'Reja yangilanmadi',
+    plan_deleted: "Reja o'chirildi",
+    failed_delete_plan: "Reja o'chirilmadi",
+    subscription_granted: 'Obuna berildi',
+    failed_grant_subscription: 'Obuna berilmadi',
+    create_plan: '+ Reja yaratish',
+    edit_plan: 'Rejani tahrirlash',
+    plan_name: 'Reja nomi',
+    description: 'Tavsif',
+    fill_required_fields: "Barcha majburiy maydonlarni to'ldiring",
+    duration_days: 'Davomiyligi (kun)',
+    price_som: "Narxi (so'm)",
+    max_rides_per_day: 'Kunlik maximum sayohat (0=chegarasiz)',
+    commission_discount: 'Komissiya chegirmasi %',
+    save_changes: "O'zgarishlarni saqlash",
+    no_active_subscriptions: "Faol obunalar yo'q",
+    expires: 'Muddati',
+    driver_id: 'Haydovchi ID',
+    select_plan: 'Rejani tanlang',
+    please_fill_fields: "Barcha maydonlarni to'ldiring",
+    granting: 'Berilmoqda...',
+    grant_subscription_btn: 'Obuna berish',
+    delete_plan_confirm: "Rejani o'chirishni xohlaysizmi?",
+    commission_off: 'komissiya chegirmasi',
+
+    // Admin Layout/Status
+    system_active: 'Tizim faol',
+
+    // Admin Misc
+    banned_by_admin: "Admin tomonidan bloklangan",
+    no_username: "username yo'q",
+    no_phone: "telefon yo'q",
+
+    // Export
+    export_failed: 'Eksport amalga oshirilmadi',
   },
 
   ru: {
@@ -480,6 +526,12 @@ const translations: Record<Language, Record<string, string>> = {
     sos: '🆘 SOS',
     no_drivers_found: 'Водители не найдены. Попробуйте снова.',
     failed_create_order: 'Ошибка создания заказа',
+    ride_completed: 'Поездка завершена!',
+    ride_cancelled: 'Поездка отменена',
+    thank_you: 'Спасибо за поездку',
+    driver_arrived: 'Водитель прибыл!',
+    ride_started: 'Поездка началась',
+    failed_get_estimate: 'Не удалось рассчитать цену',
 
     // Ride History
     ride_history: 'История поездок',
@@ -849,6 +901,46 @@ const translations: Record<Language, Record<string, string>> = {
     subscription_expired_warning: 'Срок вашей подписки истёк! Продлите подписку для выхода онлайн.',
     manage_subscriptions: 'Управление подписками',
     grant_subscription: 'Предоставить подписку',
+
+    // Subscription Management
+    plan_created: 'План создан',
+    failed_create_plan: 'Не удалось создать план',
+    plan_updated: 'План обновлён',
+    failed_update_plan: 'Не удалось обновить план',
+    plan_deleted: 'План удалён',
+    failed_delete_plan: 'Не удалось удалить план',
+    subscription_granted: 'Подписка выдана',
+    failed_grant_subscription: 'Не удалось выдать подписку',
+    create_plan: '+ Создать план',
+    edit_plan: 'Редактировать план',
+    plan_name: 'Название плана',
+    description: 'Описание',
+    fill_required_fields: 'Заполните все обязательные поля',
+    duration_days: 'Длительность (дней)',
+    price_som: 'Цена (сўм)',
+    max_rides_per_day: 'Макс. поездок/день (0=без ограничений)',
+    commission_discount: 'Скидка комиссии %',
+    save_changes: 'Сохранить изменения',
+    no_active_subscriptions: 'Нет активных подписок',
+    expires: 'Истекает',
+    driver_id: 'ID водителя',
+    select_plan: 'Выберите план',
+    please_fill_fields: 'Заполните все поля',
+    granting: 'Выдаётся...',
+    grant_subscription_btn: 'Выдать подписку',
+    delete_plan_confirm: 'Удалить этот план?',
+    commission_off: 'скидка комиссии',
+
+    // Admin Layout/Status
+    system_active: 'Система активна',
+
+    // Admin Misc
+    banned_by_admin: 'Заблокирован админом',
+    no_username: 'нет username',
+    no_phone: 'нет телефона',
+
+    // Export
+    export_failed: 'Экспорт не удался',
   },
 };
 

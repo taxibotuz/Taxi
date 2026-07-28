@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRideStore } from '../../store/rideStore';
 import { ridesApi } from '../../services/api';
-import { connectSocket, subscribeToRideUpdates, subscribeToDriverLocation } from '../../services/socket';
+import { connectSocket, subscribeToDriverLocation, getSocket } from '../../services/socket';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import MapView from '../../components/ui/MapView';
@@ -15,7 +15,7 @@ export default function RideSearch() {
   const navigate = useNavigate();
   const { pickup, destination, currentOrder, setCurrentOrder, setIsSearching, isSearching, priceEstimate, setPriceEstimate } = useRideStore();
   const token = useAuthStore((s) => s.token);
-  const [step, setStep] = useState<'price' | 'searching' | 'found' | 'completed'>('price');
+  const [step, setStep] = useState<'price' | 'searching' | 'found' | 'riding' | 'completed'>('price');
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [offeredPrice, setOfferedPrice] = useState<number>(0);
@@ -31,6 +31,8 @@ export default function RideSearch() {
     ridesApi.estimatePrice({ distance, duration }).then(({ data }) => {
       setPriceEstimate(data.price);
       setOfferedPrice(data.price.total);
+    }).catch(() => {
+      toast.error(t('failed_get_estimate'));
     });
   }, []);
 
@@ -46,13 +48,75 @@ export default function RideSearch() {
 
   useEffect(() => {
     if (!token) return;
-    const socket = connectSocket(token);
-    const unsubRide = subscribeToRideUpdates((data) => {
-      if (data.status === 'found' || data.rideId) { setStep('found'); setIsSearching(false); }
-      if (data.status === 'timeout') { toast.error(t('no_drivers_found')); setIsSearching(false); setStep('price'); }
-    });
-    const unsubLoc = subscribeToDriverLocation((data) => { setDriverLocation({ lat: data.lat, lng: data.lng }); });
-    return () => { unsubRide(); unsubLoc(); };
+    const s = connectSocket(token);
+
+    const onAccepted = (data: any) => {
+      const store = useRideStore.getState();
+      if (data.driverInfo) {
+        const driverData = {
+          _id: data.driverId,
+          car: data.driverInfo.car,
+          rating: data.driverInfo.rating,
+          user: {
+            firstName: data.driverInfo.firstName,
+            lastName: data.driverInfo.lastName,
+            photoUrl: data.driverInfo.photoUrl,
+          },
+        };
+        store.setCurrentOrder({ ...store.currentOrder, driverId: driverData } as any);
+      }
+      setStep('found');
+      setIsSearching(false);
+    };
+
+    const onArrived = (_data: any) => {
+      toast(t('driver_arrived'));
+      setStep('riding');
+    };
+
+    const onStarted = (_data: any) => {
+      toast(t('ride_started'));
+    };
+
+    const onCompleted = (_data: any) => {
+      toast.success(t('ride_completed'));
+      setStep('completed');
+      setIsSearching(false);
+      setTimeout(() => { navigate('/'); }, 3000);
+    };
+
+    const onCancelled = (data: any) => {
+      toast.error(data.reason || t('ride_cancelled'));
+      setStep('price');
+      setIsSearching(false);
+    };
+
+    const onSearchStatus = (data: any) => {
+      if (data.status === 'timeout') {
+        toast.error(t('no_drivers_found'));
+        setIsSearching(false);
+        setStep('price');
+      }
+    };
+
+    s.on('ride:accepted', onAccepted);
+    s.on('ride:arrived', onArrived);
+    s.on('ride:in_progress', onStarted);
+    s.on('ride:completed', onCompleted);
+    s.on('ride:cancelled', onCancelled);
+    s.on('search:status', onSearchStatus);
+
+    const unsubLoc = subscribeToDriverLocation((data: any) => { setDriverLocation({ lat: data.lat, lng: data.lng }); });
+
+    return () => {
+      s.off('ride:accepted', onAccepted);
+      s.off('ride:arrived', onArrived);
+      s.off('ride:in_progress', onStarted);
+      s.off('ride:completed', onCompleted);
+      s.off('ride:cancelled', onCancelled);
+      s.off('search:status', onSearchStatus);
+      unsubLoc();
+    };
   }, [token]);
 
   const handleOrderRide = async () => {
@@ -186,7 +250,7 @@ export default function RideSearch() {
               <div className="flex items-center gap-2 p-3 rounded-input bg-primary-500/10 border border-primary-500/30">
                 <span className="text-lg">💵</span>
                 <div>
-                  <span className="text-sm font-medium text-primary-400">To'lov turi: Naqd</span>
+                  <span className="text-sm font-medium text-primary-400">{t('cash')}</span>
                   <p className="text-[10px] text-gray-500">{t('cash_desc')}</p>
                 </div>
               </div>
@@ -233,7 +297,14 @@ export default function RideSearch() {
               ))}
             </div>
             <button
-              onClick={() => { setStep('price'); setIsSearching(false); }}
+              onClick={async () => {
+                if (currentOrder?._id) {
+                  try { await ridesApi.cancelOrder(currentOrder._id); } catch {}
+                }
+                setStep('price');
+                setIsSearching(false);
+                setCurrentOrder(null);
+              }}
               className="text-red-400 text-sm font-medium active:scale-95 transition-all py-2"
             >
               {t('cancel_search')}
@@ -282,6 +353,71 @@ export default function RideSearch() {
                 {t('sos')}
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {step === 'riding' && currentOrder && (
+          <motion.div
+            key="riding"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="glass border-t border-white/5 rounded-t-sheet p-4 sm:p-5 space-y-4"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center text-2xl flex-shrink-0 animate-pulse">
+                🚗
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base">{t('ride_started')}</h3>
+                <p className="text-xs sm:text-sm text-gray-400 truncate">
+                  {currentOrder.driverId?.car?.brand} {currentOrder.driverId?.car?.model} • {currentOrder.driverId?.car?.plateNumber}
+                </p>
+              </div>
+            </div>
+
+            {driverLocation && (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
+                {t('driver_moving')}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+              <button className="py-3 rounded-btn bg-green-500/15 text-green-400 text-sm font-medium hover:bg-green-500/25 active:scale-[0.97] transition-all">
+                {t('call')}
+              </button>
+              <button className="py-3 rounded-btn bg-primary-500/15 text-primary-400 text-sm font-medium hover:bg-primary-500/25 active:scale-[0.97] transition-all">
+                {t('chat')}
+              </button>
+              <button className="py-3 rounded-btn bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 active:scale-[0.97] transition-all">
+                {t('sos')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 'completed' && (
+          <motion.div
+            key="completed"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="glass border-t border-white/5 rounded-t-sheet p-6 sm:p-8 text-center space-y-5"
+          >
+            <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 flex items-center justify-center">
+              <span className="text-3xl">✅</span>
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-green-400">{t('ride_completed')}</h2>
+              <p className="text-gray-400 text-sm mt-1">{t('thank_you')}</p>
+            </div>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full py-3 rounded-card bg-primary-500 text-white font-semibold text-sm shadow-btn hover:bg-primary-600 active:scale-[0.98] transition-all"
+            >
+              {t('nav_home')}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

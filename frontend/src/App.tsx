@@ -5,6 +5,7 @@ import { useAuthStore } from './store/authStore';
 import { connectSocket, disconnectSocket } from './services/socket';
 import { authApi } from './services/api';
 import { initFrontendErrorReporting } from './services/errorReporter';
+import { loadSettingsBoundary } from './services/geo';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import SplashScreen from './components/ui/SplashScreen';
 import CustomerLayout from './pages/customer/CustomerLayout';
@@ -37,37 +38,22 @@ function App() {
     const initApp = async () => {
       try {
         if (token) {
-          console.group('🔐 App.initApp');
-          console.log('Starting verifyToken...');
           const { data } = await authApi.verifyToken();
-          console.log('verifyToken response:', data);
           if (data.valid) {
-            console.log('Token valid, fetching profile...');
             const profile = await authApi.getProfile();
-            console.log('getProfile response user:', profile.data.user);
-            console.log('getProfile response user.role:', profile.data.user?.role);
             const currentTgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user
               || (window as any).__TG_INIT_DATA_UNSAFE?.user;
             if (currentTgUser && profile.data.user?.telegramId !== currentTgUser.id) {
-              console.warn('Telegram ID mismatch: token belongs to different user');
-              console.log('token telegramId:', profile.data.user?.telegramId);
-              console.log('current Telegram user id:', currentTgUser.id);
-              console.groupEnd();
               logout();
               return;
             }
             setAuth(token, profile.data.user);
-            console.groupEnd();
             connectSocket(token);
           } else {
-            console.warn('Token NOT valid, logging out');
-            console.groupEnd();
             logout();
           }
         }
       } catch {
-        console.warn('initApp error, logging out');
-        console.groupEnd();
         logout();
       } finally {
         setLoading(false);
@@ -87,6 +73,7 @@ function App() {
 
   useEffect(() => {
     initFrontendErrorReporting();
+    loadSettingsBoundary();
   }, []);
 
   useEffect(() => {

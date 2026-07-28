@@ -5,6 +5,19 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { adminApi } from '../../services/api';
 import { useTranslation } from '../../i18n';
 
+function escapeCsvField(field: string | number | undefined | null): string {
+  if (field === undefined || field === null) return '';
+  const str = String(field);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
 const STATUS_COLORS: Record<string, string> = {
   completed: 'bg-emerald-500/15 text-emerald-400',
   cancelled: 'bg-red-500/15 text-red-400',
@@ -57,7 +70,16 @@ export default function DriverPerformanceDetail() {
   const handleExportCSV = () => {
     const headers = 'Date,Pickup,Destination,Distance,Duration,Fare,Status,Customer\n';
     const rows = rideHistory.map((r: any) =>
-      `"${new Date(r.createdAt).toLocaleDateString()}","${r.pickup?.address || ''}","${r.destination?.address || ''}",${r.distance},${r.duration},${r.pricing?.total || 0},"${r.status}","${r.customerId?.firstName || ''} ${r.customerId?.lastName || ''}"`
+      [
+        escapeCsvField(new Date(r.createdAt).toLocaleDateString()),
+        escapeCsvField(r.pickup?.address),
+        escapeCsvField(r.destination?.address),
+        escapeCsvField(r.distance),
+        escapeCsvField(r.duration),
+        escapeCsvField(r.pricing?.total || 0),
+        escapeCsvField(r.status),
+        escapeCsvField(`${r.customerId?.firstName || ''} ${r.customerId?.lastName || ''}`),
+      ].join(',')
     ).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -72,7 +94,7 @@ export default function DriverPerformanceDetail() {
     let xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n<Worksheet ss:Name="Driver Performance">\n<Table>\n';
     xml += '<Row><Cell><Data ss:Type="String">Date</Data></Cell><Cell><Data ss:Type="String">Pickup</Data></Cell><Cell><Data ss:Type="String">Destination</Data></Cell><Cell><Data ss:Type="String">Distance</Data></Cell><Cell><Data ss:Type="String">Duration</Data></Cell><Cell><Data ss:Type="String">Fare</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Customer</Data></Cell></Row>\n';
     rideHistory.forEach((r: any) => {
-      xml += `<Row><Cell><Data ss:Type="String">${new Date(r.createdAt).toLocaleDateString()}</Data></Cell><Cell><Data ss:Type="String">${r.pickup?.address || ''}</Data></Cell><Cell><Data ss:Type="String">${r.destination?.address || ''}</Data></Cell><Cell><Data ss:Type="Number">${r.distance}</Data></Cell><Cell><Data ss:Type="Number">${r.duration}</Data></Cell><Cell><Data ss:Type="Number">${r.pricing?.total || 0}</Data></Cell><Cell><Data ss:Type="String">${r.status}</Data></Cell><Cell><Data ss:Type="String">${r.customerId?.firstName || ''} ${r.customerId?.lastName || ''}</Data></Cell></Row>\n`;
+      xml += `<Row><Cell><Data ss:Type="String">${escapeXml(new Date(r.createdAt).toLocaleDateString())}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(r.pickup?.address || '')}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(r.destination?.address || '')}</Data></Cell><Cell><Data ss:Type="Number">${r.distance}</Data></Cell><Cell><Data ss:Type="Number">${r.duration}</Data></Cell><Cell><Data ss:Type="Number">${r.pricing?.total || 0}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(r.status)}</Data></Cell><Cell><Data ss:Type="String">${escapeXml(`${r.customerId?.firstName || ''} ${r.customerId?.lastName || ''}`)}</Data></Cell></Row>\n`;
     });
     xml += '</Table>\n</Worksheet>\n</Workbook>';
     const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });

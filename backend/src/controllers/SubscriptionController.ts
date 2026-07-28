@@ -56,7 +56,15 @@ export class SubscriptionController {
       });
 
       return res.status(201).json({ plan });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'ValidationError') {
+        const field = Object.keys(error.errors)[0];
+        return res.status(400).json({
+          success: false,
+          field,
+          message: error.errors[field]?.message || 'Validation failed',
+        });
+      }
       logger.error('Create subscription plan error:', error);
       return res.status(500).json({ error: 'Failed to create plan' });
     }
@@ -75,7 +83,15 @@ export class SubscriptionController {
       if (!plan) return res.status(404).json({ error: 'Plan not found' });
 
       return res.json({ plan });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'ValidationError') {
+        const field = Object.keys(error.errors)[0];
+        return res.status(400).json({
+          success: false,
+          field,
+          message: error.errors[field]?.message || 'Validation failed',
+        });
+      }
       logger.error('Update subscription plan error:', error);
       return res.status(500).json({ error: 'Failed to update plan' });
     }

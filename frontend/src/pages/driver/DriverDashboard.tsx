@@ -152,7 +152,7 @@ export default function DriverDashboard() {
           </p>
           <div className="flex items-center gap-1.5 mt-2 text-xs text-green-400">
             <span>💵</span>
-            <span className="font-medium">To'lov: Naqd</span>
+            <span className="font-medium">{t('cash')}</span>
           </div>
         </motion.div>
       )}

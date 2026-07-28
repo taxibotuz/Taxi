@@ -32,41 +32,41 @@ export default function AdminSubscriptions() {
   const createPlanMutation = useMutation({
     mutationFn: (data: any) => subscriptionApi.adminCreatePlan(data),
     onSuccess: () => {
-      toast.success('Plan created');
+      toast.success(t('plan_created'));
       queryClient.invalidateQueries({ queryKey: ['admin', 'subscription', 'plans'] });
       setShowCreatePlan(false);
     },
-    onError: () => toast.error('Failed to create plan'),
+    onError: () => toast.error(t('failed_create_plan')),
   });
 
   const updatePlanMutation = useMutation({
     mutationFn: ({ planId, data }: any) => subscriptionApi.adminUpdatePlan(planId, data),
     onSuccess: () => {
-      toast.success('Plan updated');
+      toast.success(t('plan_updated'));
       queryClient.invalidateQueries({ queryKey: ['admin', 'subscription', 'plans'] });
       setEditingPlan(null);
     },
-    onError: () => toast.error('Failed to update plan'),
+    onError: () => toast.error(t('failed_update_plan')),
   });
 
   const deletePlanMutation = useMutation({
     mutationFn: (planId: string) => subscriptionApi.adminDeletePlan(planId),
     onSuccess: () => {
-      toast.success('Plan deleted');
+      toast.success(t('plan_deleted'));
       queryClient.invalidateQueries({ queryKey: ['admin', 'subscription', 'plans'] });
     },
-    onError: () => toast.error('Failed to delete plan'),
+    onError: () => toast.error(t('failed_delete_plan')),
   });
 
   const grantMutation = useMutation({
     mutationFn: (data: any) => subscriptionApi.adminGrant(data),
     onSuccess: () => {
-      toast.success('Subscription granted');
+      toast.success(t('subscription_granted'));
       setShowGrantSub(false);
       setSelectedDriver('');
       setSelectedPlan('');
     },
-    onError: () => toast.error('Failed to grant subscription'),
+    onError: () => toast.error(t('failed_grant_subscription')),
   });
 
   const [planForm, setPlanForm] = useState({
@@ -107,7 +107,7 @@ export default function AdminSubscriptions() {
             onClick={() => { setShowCreatePlan(true); setEditingPlan(null); }}
             className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-medium"
           >
-            + Create Plan
+            + {t('create_plan')}
           </button>
 
           {plans.map((plan: any) => (
@@ -123,8 +123,8 @@ export default function AdminSubscriptions() {
                   <p className="text-xs text-gray-400 mt-1">{plan.description}</p>
                   <div className="flex gap-3 mt-2 text-xs text-gray-500">
                     <span>{plan.durationDays} {t('subscription_days')}</span>
-                    <span>{plan.price?.toLocaleString()} so'm</span>
-                    {plan.commissionDiscount > 0 && <span>{plan.commissionDiscount}% commission off</span>}
+                    <span>{plan.price?.toLocaleString()} {t('sum')}</span>
+                    {plan.commissionDiscount > 0 && <span>{plan.commissionDiscount}% {t('commission_off')}</span>}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -132,13 +132,13 @@ export default function AdminSubscriptions() {
                     onClick={() => { setEditingPlan(plan); setShowCreatePlan(true); }}
                     className="px-3 py-1 rounded-lg bg-white/5 text-xs text-gray-400 hover:bg-white/10"
                   >
-                    Edit
+                    {t('edit')}
                   </button>
                   <button
-                    onClick={() => { if (confirm('Delete this plan?')) deletePlanMutation.mutate(plan._id); }}
+                    onClick={() => { if (confirm(t('delete_plan_confirm'))) deletePlanMutation.mutate(plan._id); }}
                     className="px-3 py-1 rounded-lg bg-red-500/10 text-xs text-red-400 hover:bg-red-500/20"
                   >
-                    Delete
+                    {t('delete')}
                   </button>
                 </div>
               </div>
@@ -162,73 +162,82 @@ export default function AdminSubscriptions() {
                   className="glass rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md space-y-3"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h2 className="text-lg font-bold">{editingPlan ? 'Edit Plan' : 'Create Plan'}</h2>
-                  <input
-                    type="text"
-                    placeholder="Plan name"
-                    value={editingPlan?.name || planForm.name}
-                    onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, name: e.target.value }) : setPlanForm({ ...planForm, name: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Description"
-                    value={editingPlan?.description || planForm.description}
-                    onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, description: e.target.value }) : setPlanForm({ ...planForm, description: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
-                  />
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-400">Duration (days)</label>
-                      <input
-                        type="number"
-                        value={editingPlan?.durationDays || planForm.durationDays}
-                        onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, durationDays: +e.target.value }) : setPlanForm({ ...planForm, durationDays: +e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400">Price (so'm)</label>
-                      <input
-                        type="number"
-                        value={editingPlan?.price || planForm.price}
-                        onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, price: +e.target.value }) : setPlanForm({ ...planForm, price: +e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-400">Max rides/day (0=unlimited)</label>
-                      <input
-                        type="number"
-                        value={editingPlan?.maxRidesPerDay || planForm.maxRidesPerDay}
-                        onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, maxRidesPerDay: +e.target.value }) : setPlanForm({ ...planForm, maxRidesPerDay: +e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400">Commission discount %</label>
-                      <input
-                        type="number"
-                        value={editingPlan?.commissionDiscount || planForm.commissionDiscount}
-                        onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, commissionDiscount: +e.target.value }) : setPlanForm({ ...planForm, commissionDiscount: +e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
-                      />
-                    </div>
-                  </div>
+                  <h2 className="text-lg font-bold">{editingPlan ? t('edit_plan') : t('create_plan')}</h2>
+                   <input
+                     type="text"
+                     placeholder={t('plan_name')}
+                     value={editingPlan?.name ?? planForm.name}
+                     onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, name: e.target.value }) : setPlanForm({ ...planForm, name: e.target.value })}
+                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
+                   />
+                   <input
+                     type="text"
+                     placeholder={t('description')}
+                     value={editingPlan?.description ?? planForm.description}
+                     onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, description: e.target.value }) : setPlanForm({ ...planForm, description: e.target.value })}
+                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
+                   />
+                   <div className="grid grid-cols-2 gap-3">
+                     <div>
+                       <label className="text-xs text-gray-400">{t('duration_days')}</label>
+                       <input
+                         type="number"
+                         value={editingPlan?.durationDays ?? planForm.durationDays}
+                         onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, durationDays: +e.target.value }) : setPlanForm({ ...planForm, durationDays: +e.target.value })}
+                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
+                       />
+                     </div>
+                     <div>
+                       <label className="text-xs text-gray-400">{t('price_som')}</label>
+                       <input
+                         type="number"
+                         value={editingPlan?.price ?? planForm.price}
+                         onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, price: +e.target.value }) : setPlanForm({ ...planForm, price: +e.target.value })}
+                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
+                       />
+                     </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
+                     <div>
+                       <label className="text-xs text-gray-400">{t('max_rides_per_day')}</label>
+                       <input
+                         type="number"
+                         value={editingPlan?.maxRidesPerDay ?? planForm.maxRidesPerDay}
+                         onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, maxRidesPerDay: +e.target.value }) : setPlanForm({ ...planForm, maxRidesPerDay: +e.target.value })}
+                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
+                       />
+                     </div>
+                     <div>
+                       <label className="text-xs text-gray-400">{t('commission_discount')}</label>
+                       <input
+                         type="number"
+                         value={editingPlan?.commissionDiscount ?? planForm.commissionDiscount}
+                         onChange={(e) => editingPlan ? setEditingPlan({ ...editingPlan, commissionDiscount: +e.target.value }) : setPlanForm({ ...planForm, commissionDiscount: +e.target.value })}
+                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
+                       />
+                     </div>
+                   </div>
                   <button
                     onClick={() => {
                       const data = editingPlan || planForm;
                       if (editingPlan) {
                         updatePlanMutation.mutate({ planId: editingPlan._id, data });
                       } else {
+                        if (!planForm.name.trim()) {
+                          toast.error(t('fill_required_fields'));
+                          return;
+                        }
+                        if (planForm.durationDays < 1) {
+                          toast.error(t('fill_required_fields'));
+                          return;
+                        }
                         createPlanMutation.mutate({ ...data, features: data.features ? data.features.split(',').map((f: string) => f.trim()) : [] });
                       }
                     }}
-                    className="w-full py-2.5 rounded-xl bg-primary-500 text-white font-semibold text-sm"
+                    disabled={!editingPlan && !planForm.name.trim()}
+                    className="w-full py-2.5 rounded-xl bg-primary-500 text-white font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {editingPlan ? 'Save Changes' : 'Create Plan'}
+                    {editingPlan ? t('save_changes') : t('create_plan')}
                   </button>
                 </motion.div>
               </motion.div>
@@ -241,7 +250,7 @@ export default function AdminSubscriptions() {
       {tab === 'active' && (
         <div className="space-y-3">
           {activeSubs.length === 0 && (
-            <div className="text-center py-8 text-gray-500 text-sm">No active subscriptions</div>
+            <div className="text-center py-8 text-gray-500 text-sm">{t('no_active_subscriptions')}</div>
           )}
           {activeSubs.map((sub: any) => (
             <motion.div
@@ -256,11 +265,11 @@ export default function AdminSubscriptions() {
                     {sub.driverId?.userId?.firstName} {sub.driverId?.userId?.lastName}
                   </div>
                   <div className="text-xs text-gray-400 mt-1">
-                    {sub.planId?.name} • Expires: {new Date(sub.expiresAt).toLocaleDateString()}
+                    {sub.planId?.name} • {t('expires')}: {new Date(sub.expiresAt).toLocaleDateString()}
                   </div>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium">
-                  Active
+                  {t('active')}
                 </div>
               </div>
             </motion.div>
@@ -275,7 +284,7 @@ export default function AdminSubscriptions() {
             <h3 className="font-semibold">{t('grant_subscription')}</h3>
             <input
               type="text"
-              placeholder="Driver ID"
+              placeholder={t('driver_id')}
               value={selectedDriver}
               onChange={(e) => setSelectedDriver(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
@@ -285,17 +294,17 @@ export default function AdminSubscriptions() {
               onChange={(e) => setSelectedPlan(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm"
             >
-              <option value="">Select plan</option>
+              <option value="">{t('select_plan')}</option>
               {plans.map((plan: any) => (
                 <option key={plan._id} value={plan._id}>
-                  {plan.name} - {plan.durationDays} days - {plan.price?.toLocaleString()} so'm
+                  {plan.name} - {plan.durationDays} {t('subscription_days')} - {plan.price?.toLocaleString()} {t('sum')}
                 </option>
               ))}
             </select>
             <button
               onClick={() => {
                 if (!selectedDriver || !selectedPlan) {
-                  toast.error('Please fill all fields');
+                  toast.error(t('please_fill_fields'));
                   return;
                 }
                 grantMutation.mutate({ driverId: selectedDriver, planId: selectedPlan });
@@ -303,7 +312,7 @@ export default function AdminSubscriptions() {
               disabled={grantMutation.isPending}
               className="w-full py-2.5 rounded-xl bg-primary-500 text-white font-semibold text-sm disabled:opacity-50"
             >
-              {grantMutation.isPending ? 'Granting...' : 'Grant Subscription'}
+              {grantMutation.isPending ? t('granting') : t('grant_subscription_btn')}
             </button>
           </div>
         </div>

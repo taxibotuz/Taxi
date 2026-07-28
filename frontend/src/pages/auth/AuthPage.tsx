@@ -110,7 +110,7 @@ export default function AuthPage() {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3 }}
-        onClick={handleBrowserLogin}
+        onClick={isTelegramEnv() ? () => doLogin(getTelegramUser()) : handleBrowserLogin}
         disabled={loading}
         className="w-full max-w-sm py-4 rounded-card bg-primary-500 text-white font-semibold text-lg shadow-btn hover:bg-primary-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
       >

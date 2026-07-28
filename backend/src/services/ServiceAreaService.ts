@@ -73,8 +73,9 @@ export class ServiceAreaService {
       cache.set(key, { allowed: true, cachedAt: Date.now() });
       return { allowed: true };
     } catch (error) {
-      logger.error('ServiceAreaService geocode error, allowing request:', error);
-      return { allowed: true };
+      logger.error('ServiceAreaService geocode error, denying request:', error);
+      cache.set(key, { allowed: false, cachedAt: Date.now() });
+      return { allowed: false, message: ServiceAreaService.errorMessage('uz') };
     }
   }
 

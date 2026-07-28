@@ -29,6 +29,7 @@ import adminRoutes from './routes/admin';
 import errorRoutes from './routes/errors';
 import foodRoutes from './routes/food';
 import subscriptionRoutes from './routes/subscriptions';
+import publicSettingsRoutes from './routes/settings';
 import { SubscriptionController } from './controllers/SubscriptionController';
 
 ErrorReporter.init();
@@ -97,6 +98,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/errors', errorRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/settings', publicSettingsRoutes);
 
 app.get('/health', (_req, res) => {
   const mongoState = mongoose.connection.readyState;

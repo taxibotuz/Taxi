@@ -4,6 +4,15 @@ import { adminApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../../i18n';
 
+function escapeCsvField(field: string | number | undefined | null): string {
+  if (field === undefined || field === null) return '';
+  const str = String(field);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 export default function AdminErrorLogs() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -39,7 +48,15 @@ export default function AdminErrorLogs() {
   const exportCSV = () => {
     const headers = 'Name,Message,Severity,Status,Endpoint,Count,Created\n';
     const rows = errors.map((e: any) =>
-      `"${e.name}","${(e.message || '').replace(/"/g, '""')}",${e.severity},${e.resolved ? 'Resolved' : 'Open'},${e.endpoint || ''},${e.count},${new Date(e.createdAt).toISOString()}`
+      [
+        escapeCsvField(e.name),
+        escapeCsvField(e.message),
+        escapeCsvField(e.severity),
+        escapeCsvField(e.resolved ? 'Resolved' : 'Open'),
+        escapeCsvField(e.endpoint),
+        escapeCsvField(e.count),
+        escapeCsvField(new Date(e.createdAt).toISOString()),
+      ].join(',')
     ).join('\n');
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

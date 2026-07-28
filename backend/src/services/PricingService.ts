@@ -3,9 +3,9 @@ import { PriceBreakdown } from '../types';
 
 export class PricingService {
   async getPricingConfig() {
-    const settings = await Settings.findOne();
+    let settings = await Settings.findOne();
     if (!settings) {
-      throw new Error('Settings not configured');
+      settings = await Settings.create({});
     }
     return settings.pricing;
   }

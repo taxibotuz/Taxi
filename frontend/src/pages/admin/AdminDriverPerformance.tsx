@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../../services/api';
+import toast from 'react-hot-toast';
 import { useTranslation } from '../../i18n';
 
 export default function AdminDriverPerformance() {
@@ -71,6 +72,8 @@ export default function AdminDriverPerformance() {
       a.download = `driver-performance-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    }).catch(() => {
+      toast.error(t('export_failed'));
     });
   };
 

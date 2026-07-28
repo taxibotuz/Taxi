@@ -434,3 +434,39 @@ export const foodSchemas = {
     params: z.object({}).optional(),
   }),
 };
+
+export const subscriptionSchemas = {
+  createPlan: z.object({
+    body: z.object({
+      name: z.string({ required_error: 'Plan name is required' }).min(1, 'Plan name is required'),
+      description: z.string().default(''),
+      durationDays: z.number({ required_error: 'Duration is required' }).int().min(1, 'Duration must be at least 1 day'),
+      price: z.number({ required_error: 'Price is required' }).min(0, 'Price must be non-negative'),
+      features: z.array(z.string()).default([]),
+      maxRidesPerDay: z.number().int().min(0).default(0).optional(),
+      maxRadius: z.number().min(0).default(0).optional(),
+      commissionDiscount: z.number().min(0).max(100).default(0).optional(),
+      sortOrder: z.number().int().default(0).optional(),
+    }),
+    query: z.object({}).optional(),
+    params: z.object({}).optional(),
+  }),
+  updatePlan: z.object({
+    body: z.object({
+      name: z.string().min(1, 'Plan name is required').optional(),
+      description: z.string().optional(),
+      durationDays: z.number().int().min(1).optional(),
+      price: z.number().min(0).optional(),
+      features: z.array(z.string()).optional(),
+      maxRidesPerDay: z.number().int().min(0).optional(),
+      maxRadius: z.number().min(0).optional(),
+      commissionDiscount: z.number().min(0).max(100).optional(),
+      isActive: z.boolean().optional(),
+      sortOrder: z.number().int().optional(),
+    }),
+    query: z.object({}).optional(),
+    params: z.object({
+      planId: mongoId,
+    }),
+  }),
+};

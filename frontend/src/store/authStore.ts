@@ -45,8 +45,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: initialToken,
   user: initialUser,
   isAuthenticated: !!initialToken,
-  isAdmin: false,
-  isDriver: false,
+  isAdmin: initialUser?.role === 'admin',
+  isDriver: initialUser?.role === 'driver',
   telegramId: null,
   initData: '',
 

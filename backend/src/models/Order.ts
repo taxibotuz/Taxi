@@ -111,7 +111,7 @@ const orderSchema = new Schema<IOrder>(
     driverRating: { type: Number, min: 0, max: 5 },
     customerComment: { type: String },
     driverComment: { type: String },
-    cancelledBy: { type: String },
+    cancelledBy: { type: String, enum: ['customer', 'driver', 'system', 'admin'] },
     cancelReason: { type: String },
     searchedDrivers: [{ type: Schema.Types.ObjectId, ref: 'Driver' }],
     rejectedDrivers: [{ type: Schema.Types.ObjectId, ref: 'Driver' }],

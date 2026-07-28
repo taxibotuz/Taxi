@@ -470,11 +470,14 @@ export class TelegramBot {
     this.bot.command('support', async (ctx) => {
       const user = await User.findOne({ telegramId: ctx.from.id });
       const lang = this.getUserLang(user);
+      const settings = await Settings.findOne().lean();
+      const phone = settings?.general?.contactPhone || '+998781234567';
+      const supportTelegram = settings?.general?.supportUrl || '@taxigo_support';
       await ctx.reply(
         `${this.t(lang, 'support_title')}\n\n` +
         `${this.t(lang, 'contact_us')}\n` +
-        `${this.t(lang, 'phone_label')} +998781234567\n` +
-        `${this.t(lang, 'telegram_label')} @taxigo_support`
+        `${this.t(lang, 'phone_label')} ${phone}\n` +
+        `${this.t(lang, 'telegram_label')} ${supportTelegram}`
       );
     });
 
@@ -633,6 +636,8 @@ export class TelegramBot {
           if (!order.rejectedDrivers.includes(driver._id)) {
             order.rejectedDrivers.push(driver._id);
             await order.save();
+            const driverMatchingService = DriverMatchingService.getInstance();
+            await driverMatchingService.removeDriverFromNotified(rideId, driver._id.toString());
           }
         }
       }
@@ -808,8 +813,10 @@ export class TelegramBot {
         const driver = await this.getDriverByTelegram(ctx);
         if (!driver || !driver.isOnline) return;
 
+        const locUser = await User.findOne({ telegramId: ctx.from.id });
+        if (!locUser) return;
         await Driver.findOneAndUpdate(
-          { userId: ctx.from.id as any },
+          { userId: locUser._id },
           {
             'currentLocation.coordinates': [location.longitude, location.latitude],
             'currentLocation.updatedAt': new Date(),
@@ -850,6 +857,7 @@ export class TelegramBot {
     driver.isOnline = !driver.isOnline;
     driver.status = driver.isOnline ? DriverStatus.ONLINE : DriverStatus.OFFLINE;
     await driver.save();
+    SocketService.emitToAdmins('driver:status', { driverId: driver._id, isOnline: driver.isOnline });
 
     await ctx.reply(driver.isOnline ? this.t(lang, 'you_are_now_online') : this.t(lang, 'you_are_now_offline'));
 

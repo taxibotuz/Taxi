@@ -1,7 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth';
 import { GeoService } from '../services/GeoService';
-import { logger } from '../config/logger';
 
 export function validateDistrict(
   req: AuthRequest,
@@ -11,16 +10,24 @@ export function validateDistrict(
   const { pickupLat, pickupLng, destLat, destLng } = req.body;
 
   if (pickupLat !== undefined && pickupLng !== undefined) {
-    const pickupCheck = GeoService.validateLocation(pickupLat, pickupLng);
+    const pickupCheck = GeoService.validatePickupLocation(pickupLat, pickupLng);
     if (!pickupCheck.valid) {
-      return res.status(400).json({ error: pickupCheck.error });
+      return res.status(403).json({
+        success: false,
+        error: pickupCheck.error,
+        field: pickupCheck.field,
+      });
     }
   }
 
   if (destLat !== undefined && destLng !== undefined) {
-    const destCheck = GeoService.validateLocation(destLat, destLng);
+    const destCheck = GeoService.validateDestinationLocation(destLat, destLng);
     if (!destCheck.valid) {
-      return res.status(400).json({ error: destCheck.error });
+      return res.status(403).json({
+        success: false,
+        error: destCheck.error,
+        field: destCheck.field,
+      });
     }
   }
 

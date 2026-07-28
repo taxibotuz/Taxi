@@ -17,6 +17,26 @@ interface DriverLocation {
   carModel?: string;
 }
 
+function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`glass rounded-card p-3 sm:p-4 border-l-4 min-w-0 ${color}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-lg sm:text-2xl font-bold truncate">
+            {typeof value === 'number' ? value.toLocaleString() : value}
+          </div>
+          <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{label}</div>
+        </div>
+        <div className="text-xl sm:text-3xl flex-shrink-0">{icon}</div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AdminDashboard() {
   const { t } = useTranslation();
   const token = useAuthStore((s) => s.token);
@@ -92,26 +112,8 @@ export default function AdminDashboard() {
   const driverMarkers = Array.from(driverLocations.values()).map((d) => ({
     lat: d.lat,
     lng: d.lng,
-    label: `${d.firstName || 'Driver'} • ${d.carModel || ''}`,
+    label: `${d.firstName || t('driver')} • ${d.carModel || ''}`,
   }));
-
-  const StatCard = ({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`glass rounded-card p-3 sm:p-4 border-l-4 min-w-0 ${color}`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-lg sm:text-2xl font-bold truncate">
-            {typeof value === 'number' ? value.toLocaleString() : value}
-          </div>
-          <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{label}</div>
-        </div>
-        <div className="text-xl sm:text-3xl flex-shrink-0">{icon}</div>
-      </div>
-    </motion.div>
-  );
 
   if (isLoading) {
     return (

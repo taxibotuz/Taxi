@@ -116,23 +116,23 @@ export class SocketService {
 
               this.driverCustomerMap.set(driver._id.toString(), order.customerId.toString());
 
-              this.io.to(`user:${userId}`).emit('ride:accepted', {
-                rideId: data.rideId,
-                driverId: driver._id,
-                driverInfo: {
-                  car: driver.car,
-                  rating: driver.rating,
-                },
-              });
+              const driverUser = await User.findById(driver.userId).select('firstName lastName phone photoUrl');
 
-              this.io.to(`user:${order.customerId.toString()}`).emit('ride:accepted', {
+              const acceptedPayload = {
                 rideId: data.rideId,
                 driverId: driver._id,
                 driverInfo: {
+                  firstName: driverUser?.firstName,
+                  lastName: driverUser?.lastName,
+                  phone: driverUser?.phone,
+                  photoUrl: driverUser?.photoUrl,
                   car: driver.car,
                   rating: driver.rating,
                 },
-              });
+              };
+
+              this.io.to(`user:${userId}`).emit('ride:accepted', acceptedPayload);
+              this.io.to(`user:${order.customerId.toString()}`).emit('ride:accepted', acceptedPayload);
             },
             () => {
               socket.emit('ride:taken', { rideId: data.rideId });
@@ -140,6 +140,27 @@ export class SocketService {
           );
         } catch (error) {
           logger.error('Ride accept error:', error);
+        }
+      });
+
+      socket.on('ride:reject', async (data: { rideId: string; reason?: string }) => {
+        try {
+          const driver = await Driver.findOne({ userId });
+          if (!driver) return;
+
+          const order = await Order.findById(data.rideId);
+          if (!order) return;
+
+          if (!order.rejectedDrivers.includes(driver._id)) {
+            order.rejectedDrivers.push(driver._id);
+            await order.save();
+          }
+
+          await this.driverMatchingService.removeDriverFromNotified(data.rideId, driver._id.toString());
+
+          socket.emit('ride:rejected', { rideId: data.rideId });
+        } catch (error) {
+          logger.error('Ride reject error:', error);
         }
       });
 
@@ -164,8 +185,14 @@ export class SocketService {
     this.io.to(`user:${userId}`).emit(event, data);
   }
 
-  static emitToDriver(driverId: string, event: string, data: any) {
-    this.io.to(`user:${driverId}`).emit(event, data);
+  static async emitToDriver(driverId: string, event: string, data: any) {
+    try {
+      const driver = await Driver.findById(driverId).select('userId');
+      if (!driver) return;
+      this.io.to(`user:${driver.userId.toString()}`).emit(event, data);
+    } catch (error) {
+      logger.error(`Failed to emit to driver ${driverId}:`, error);
+    }
   }
 
   static emitToAdmins(event: string, data: any) {
@@ -182,6 +209,10 @@ export class SocketService {
 
   static clearDriverCustomer(driverId: string) {
     this.driverCustomerMap.delete(driverId);
+  }
+
+  static onRideCompleted(driverId: string) {
+    this.clearDriverCustomer(driverId);
   }
 
   static close() {

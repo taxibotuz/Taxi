@@ -32,14 +32,22 @@ export class RideController {
         promoCode,
       } = req.body;
 
-      const geoPickup = GeoService.validateLocation(pickupLat, pickupLng);
+      const geoPickup = GeoService.validatePickupLocation(pickupLat, pickupLng);
       if (!geoPickup.valid) {
-        return res.status(400).json({ error: geoPickup.error });
+        return res.status(403).json({
+          success: false,
+          error: geoPickup.error,
+          field: geoPickup.field,
+        });
       }
 
-      const geoDest = GeoService.validateLocation(destLat, destLng);
+      const geoDest = GeoService.validateDestinationLocation(destLat, destLng);
       if (!geoDest.valid) {
-        return res.status(400).json({ error: geoDest.error });
+        return res.status(403).json({
+          success: false,
+          error: geoDest.error,
+          field: geoDest.field,
+        });
       }
 
       const now = new Date();
@@ -302,6 +310,7 @@ export class RideController {
               $inc: { totalRides: 1, totalEarnings: order.pricing.total, todayEarnings: order.pricing.total },
               $set: { status: 'online' },
             });
+            SocketService.onRideCompleted(order.driverId.toString());
           }
           break;
       }

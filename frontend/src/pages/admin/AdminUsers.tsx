@@ -18,7 +18,7 @@ export default function AdminUsers() {
   });
 
   const banMutation = useMutation({
-    mutationFn: (userId: string) => adminApi.banUser(userId, 'Banned by admin'),
+    mutationFn: (userId: string) => adminApi.banUser(userId, t('banned_by_admin')),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }); toast.success(t('user_banned')); },
     onError: () => toast.error(t('failed_ban')),
   });
@@ -79,7 +79,7 @@ export default function AdminUsers() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{u.firstName} {u.lastName}</div>
-                  <div className="text-xs text-gray-500 truncate">@{u.username || 'no username'} • {u.role}</div>
+                  <div className="text-xs text-gray-500 truncate">@{u.username || t('no_username')} • {u.role}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-badge font-medium flex-shrink-0 ${u.isBanned ? 'bg-red-500/15 text-red-400' : 'bg-green-500/15 text-green-400'}`}>
                   {u.isBanned ? t('banned') : t('active')}

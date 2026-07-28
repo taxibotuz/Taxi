@@ -60,14 +60,11 @@ export function getBoundary(): GeoPoint[] {
 
 export async function loadSettingsBoundary(): Promise<void> {
   try {
-    const token = localStorage.getItem('taxigo_token');
-    if (!token) return;
-    const res = await fetch('/api/admin/settings', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const res = await fetch(`${apiUrl}/api/settings`);
     if (!res.ok) return;
     const data = await res.json();
-    const boundary = data.data?.settings?.district?.boundary;
+    const boundary = data.district?.boundary;
     if (boundary?.length) {
       setBoundary(boundary as GeoPoint[]);
     }

@@ -17,15 +17,15 @@ export const connectSocket = (token: string) => {
   });
 
   socket.on('connect', () => {
-    console.log('Socket connected');
+    // Socket connected
   });
 
-  socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected:', reason);
+  socket.on('disconnect', () => {
+    // Socket disconnected
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error.message);
+  socket.on('connect_error', () => {
+    // Socket connection error - will auto-reconnect
   });
 
   return socket;
@@ -68,6 +68,19 @@ export const subscribeToDriverLocation = (callback: (data: any) => void) => {
   return () => s.off('driver:location', callback);
 };
 
+export const subscribeToRideRequests = (callback: (data: any) => void) => {
+  const s = getSocket();
+  if (!s) return () => {};
+
+  s.on('ride:request', callback);
+  s.on('ride:cancelled', callback);
+
+  return () => {
+    s.off('ride:request', callback);
+    s.off('ride:cancelled', callback);
+  };
+};
+
 export const emitLocationUpdate = (lat: number, lng: number) => {
   const s = getSocket();
   if (s) s.emit('location:update', { lat, lng });
@@ -76,4 +89,9 @@ export const emitLocationUpdate = (lat: number, lng: number) => {
 export const emitRideAccept = (rideId: string) => {
   const s = getSocket();
   if (s) s.emit('ride:accept', { rideId });
+};
+
+export const emitRideReject = (rideId: string, reason?: string) => {
+  const s = getSocket();
+  if (s) s.emit('ride:reject', { rideId, reason });
 };

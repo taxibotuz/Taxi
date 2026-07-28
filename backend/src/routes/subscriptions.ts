@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { SubscriptionController } from '../controllers/SubscriptionController';
 import { authenticate, requireRole } from '../middleware/auth';
+import { validate } from '../middleware/validate';
+import { subscriptionSchemas } from '../validators';
 
 const router = Router();
 const controller = new SubscriptionController();
@@ -10,8 +12,8 @@ router.get('/my', authenticate, requireRole('driver'), controller.getMySubscript
 router.post('/purchase', authenticate, requireRole('driver'), controller.purchaseSubscription.bind(controller));
 
 router.get('/admin/plans', authenticate, requireRole('admin'), controller.getAllPlans.bind(controller));
-router.post('/admin/plans', authenticate, requireRole('admin'), controller.createPlan.bind(controller));
-router.put('/admin/plans/:planId', authenticate, requireRole('admin'), controller.updatePlan.bind(controller));
+router.post('/admin/plans', authenticate, requireRole('admin'), validate(subscriptionSchemas.createPlan), controller.createPlan.bind(controller));
+router.put('/admin/plans/:planId', authenticate, requireRole('admin'), validate(subscriptionSchemas.updatePlan), controller.updatePlan.bind(controller));
 router.delete('/admin/plans/:planId', authenticate, requireRole('admin'), controller.deletePlan.bind(controller));
 router.post('/admin/grant', authenticate, requireRole('admin'), controller.adminGrantSubscription.bind(controller));
 router.get('/admin/active', authenticate, requireRole('admin'), controller.getActiveSubscriptions.bind(controller));
