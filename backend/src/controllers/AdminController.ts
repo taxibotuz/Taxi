@@ -853,7 +853,6 @@ export class AdminController {
           isApproved: driver.isApproved,
           rating: driver.rating,
           car: driver.car,
-          subscription: driver.subscription,
           currentLocation: driver.currentLocation,
           totalRides: accepted.count,
           completedRides: completed.count,

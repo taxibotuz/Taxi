@@ -7,6 +7,10 @@ export interface RouteResult {
   durationMin: number;
 }
 
+export interface RouteGeometryResult extends RouteResult {
+  geometry: Array<{ lat: number; lng: number }>;
+}
+
 export class RoutingService {
   static async getRoute(
     fromLng: number,
@@ -32,6 +36,44 @@ export class RoutingService {
     } catch (error) {
       logger.warn('OSRM routing failed, using Haversine fallback:', error);
       return RoutingService.haversineFallback(fromLng, fromLat, toLng, toLat);
+    }
+  }
+
+  static async getRouteWithGeometry(
+    fromLng: number,
+    fromLat: number,
+    toLng: number,
+    toLat: number
+  ): Promise<RouteGeometryResult> {
+    try {
+      const url = `${OSRM_BASE}/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
+      const data = await res.json() as any;
+
+      if (data.code !== 'Ok' || !data.routes?.length) {
+        throw new Error('OSRM no route found');
+      }
+
+      const route = data.routes[0];
+      const coords: Array<[number, number]> = route.geometry.coordinates;
+      const geometry = coords.map((c: [number, number]) => ({
+        lat: c[1],
+        lng: c[0],
+      }));
+
+      return {
+        distanceKm: Math.round(route.distance / 100) / 10,
+        durationMin: Math.round(route.duration / 60),
+        geometry,
+      };
+    } catch (error) {
+      logger.warn('OSRM route geometry failed, using Haversine fallback:', error);
+      const fallback = RoutingService.haversineFallback(fromLng, fromLat, toLng, toLat);
+      return {
+        ...fallback,
+        geometry: [{ lat: fromLat, lng: fromLng }, { lat: toLat, lng: toLng }],
+      };
     }
   }
 

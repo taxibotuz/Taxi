@@ -117,3 +117,15 @@ export const emitDriverStatus = (status: string) => {
   const s = getSocket();
   if (s) s.emit('driver:status', { status });
 };
+
+export const emitMatchingMode = (mode: 'nearby' | 'all') => {
+  const s = getSocket();
+  if (s) s.emit('admin:matching-mode', { mode });
+};
+
+export const subscribeToMatchingMode = (callback: (data: { mode: 'nearby' | 'all' }) => void) => {
+  const s = getSocket();
+  if (!s) return () => {};
+  s.on('admin:matching-mode', callback);
+  return () => s.off('admin:matching-mode', callback);
+};

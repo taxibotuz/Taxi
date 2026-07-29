@@ -4,6 +4,7 @@ import { Order } from '../models/Order';
 import { Driver, IDriver } from '../models/Driver';
 import { User } from '../models/User';
 import { PricingService } from '../services/PricingService';
+import { RoutingService } from '../services/RoutingService';
 import { DriverMatchingService, DriverWithRoute } from '../services/DriverMatchingService';
 import { GeoService } from '../services/GeoService';
 import { SocketService } from '../sockets/SocketService';
@@ -231,6 +232,25 @@ export class RideController {
     } catch (error) {
       logger.error('Get orders error:', error);
       return res.status(500).json({ error: 'Failed to get orders' });
+    }
+  }
+
+  async getRoute(req: AuthRequest, res: Response) {
+    try {
+      const originLat = parseFloat(req.query.originLat as string);
+      const originLng = parseFloat(req.query.originLng as string);
+      const destLat = parseFloat(req.query.destLat as string);
+      const destLng = parseFloat(req.query.destLng as string);
+
+      if ([originLat, originLng, destLat, destLng].some(isNaN)) {
+        return res.status(400).json({ error: 'Invalid coordinates' });
+      }
+
+      const route = await RoutingService.getRouteWithGeometry(originLng, originLat, destLng, destLat);
+      return res.json({ route });
+    } catch (error) {
+      logger.error('Get route error:', error);
+      return res.status(500).json({ error: 'Failed to get route' });
     }
   }
 

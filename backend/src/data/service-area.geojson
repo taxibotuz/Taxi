@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "To'rtko'l tumani",
+        "style": {
+          "border": "#00C853",
+          "weight": 3,
+          "fillColor": "#00C853",
+          "fillOpacity": 0.25
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [60.40, 41.85],
+          [60.80, 41.88],
+          [61.20, 41.85],
+          [61.55, 41.80],
+          [61.60, 41.55],
+          [61.50, 41.30],
+          [61.00, 41.25],
+          [60.45, 41.28],
+          [60.35, 41.50],
+          [60.40, 41.85]
+        ]]
+      }
+    }
+  ]
+}

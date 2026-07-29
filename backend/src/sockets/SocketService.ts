@@ -9,6 +9,7 @@ import { ErrorReporter } from '../services/ErrorReporter';
 import { User } from '../models/User';
 import { Driver } from '../models/Driver';
 import { Order } from '../models/Order';
+import { Settings } from '../models/Settings';
 import { RideStatus, DriverStatus } from '../types';
 import { DriverMatchingService } from '../services/DriverMatchingService';
 import { LocationBatcher } from '../services/LocationBatcher';
@@ -135,6 +136,26 @@ export class SocketService {
           });
         } catch (error) {
           logger.error('Driver status update error:', error);
+        }
+      });
+
+      socket.on('admin:matching-mode', async (data: { mode: 'nearby' | 'all' }) => {
+        try {
+          if (user.role !== 'admin') return;
+
+          const validModes = ['nearby', 'all'] as const;
+          if (!validModes.includes(data.mode)) return;
+
+          const settings = await Settings.findOne();
+          if (!settings) return;
+
+          settings.matching.mode = data.mode;
+          await settings.save();
+
+          this.broadcast('admin:matching-mode', { mode: data.mode });
+          logger.info(`Matching mode changed to: ${data.mode}`);
+        } catch (error) {
+          logger.error('Matching mode update error:', error);
         }
       });
 

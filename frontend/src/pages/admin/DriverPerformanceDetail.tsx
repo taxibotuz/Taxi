@@ -222,22 +222,6 @@ export default function DriverPerformanceDetail() {
             </div>
           </div>
 
-          {/* Subscription */}
-          <div className="glass rounded-card p-4">
-            <h3 className="text-sm font-semibold mb-2">{t('subscription_status')}</h3>
-            {driver.subscription?.active ? (
-              <div className="flex items-center gap-2 text-sm text-green-400">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                {t('subscription_active')} — {t('subscription_expires')}: {driver.subscription.expiresAt ? new Date(driver.subscription.expiresAt).toLocaleDateString() : '—'}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-sm text-red-400">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                {t('subscription_expired')}
-              </div>
-            )}
-          </div>
-
           {/* Last Location */}
           {driver.currentLocation && (
             <div className="glass rounded-card p-4">

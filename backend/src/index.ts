@@ -15,8 +15,6 @@ import { ErrorReporter } from './services/ErrorReporter';
 import { RedisService } from './services/RedisService';
 import { Settings } from './models/Settings';
 import { GeoService } from './services/GeoService';
-import './models/SubscriptionPlan';
-import './models/Subscription';
 
 import authRoutes from './routes/auth';
 import rideRoutes from './routes/rides';
@@ -28,9 +26,8 @@ import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
 import errorRoutes from './routes/errors';
 import foodRoutes from './routes/food';
-import subscriptionRoutes from './routes/subscriptions';
 import publicSettingsRoutes from './routes/settings';
-import { SubscriptionController } from './controllers/SubscriptionController';
+import searchRoutes from './routes/search';
 
 ErrorReporter.init();
 
@@ -97,8 +94,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/errors', errorRoutes);
 app.use('/api/food', foodRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/settings', publicSettingsRoutes);
+app.use('/api/search', searchRoutes);
 
 app.get('/health', (_req, res) => {
   const mongoState = mongoose.connection.readyState;
@@ -255,34 +252,6 @@ async function start() {
     } catch (error) {
       logger.error('Failed to launch bot (server continues):', error);
     }
-
-    const subscriptionController = new SubscriptionController();
-    setInterval(async () => {
-      try {
-        await subscriptionController.checkAndExpireSubscriptions();
-      } catch (error) {
-        logger.error('Subscription expiration check failed:', error);
-      }
-    }, 60 * 60 * 1000);
-
-    setInterval(async () => {
-      try {
-        const expiringIn3Days = await subscriptionController.getExpiringSubscriptions(3);
-        for (const sub of expiringIn3Days) {
-          if ((sub.driverId as any)?.userId) {
-            const user = await (await import('./models/User')).User.findById((sub.driverId as any).userId);
-            if (user?.telegramId) {
-              const daysLeft = Math.ceil((new Date(sub.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              const planName = (sub.planId as any)?.name || 'subscription';
-              bot.sendNotification(user.telegramId, `⚠️ Your ${planName} expires in ${daysLeft} day(s). Please renew to continue driving.`);
-              await subscriptionController.markReminderSent(sub._id.toString());
-            }
-          }
-        }
-      } catch (error) {
-        logger.error('Subscription reminder check failed:', error);
-      }
-    }, 6 * 60 * 60 * 1000);
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);

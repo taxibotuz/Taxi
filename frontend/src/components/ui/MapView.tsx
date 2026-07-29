@@ -70,7 +70,6 @@ interface MapViewProps {
   markers?: Array<{ lat: number; lng: number; icon?: string; label?: string }>;
   onClick?: (lat: number, lng: number) => void;
   onDrag?: (lat: number, lng: number) => void;
-  showDistrict?: boolean;
   showSatelliteToggle?: boolean;
   showETA?: boolean;
   etaSeconds?: number;
@@ -122,7 +121,6 @@ export default function MapView({
   route,
   markers,
   onClick,
-  showDistrict = true,
   showSatelliteToggle = true,
   showETA = false,
   etaSeconds,
@@ -159,17 +157,15 @@ export default function MapView({
         <MapClickHandler onClick={onClick} />
         <MapCenterUpdater center={center} />
 
-        {showDistrict && (
-          <Polygon
-            positions={districtPolygon}
-            pathOptions={{
-              color: '#22c55e',
-              weight: 4,
-              fillColor: '#22c55e',
-              fillOpacity: 0.2,
-            }}
-          />
-        )}
+        <Polygon
+          positions={districtPolygon}
+          pathOptions={{
+            color: '#00C853',
+            weight: 3,
+            fillColor: '#00C853',
+            fillOpacity: 0.25,
+          }}
+        />
 
         {route && route.length >= 2 && (
           <Polyline
@@ -177,8 +173,8 @@ export default function MapView({
             pathOptions={{
               color: '#3b82f6',
               weight: 4,
-              opacity: 0.7,
-              dashArray: '10, 10',
+              opacity: 0.8,
+              dashArray: route.length > 2 ? undefined : '10, 10',
             }}
           />
         )}

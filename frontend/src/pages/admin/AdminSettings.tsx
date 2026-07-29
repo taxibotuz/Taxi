@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../services/api';
+import { emitMatchingMode, subscribeToMatchingMode } from '../../services/socket';
+import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import type { Settings } from '../../types';
 import { useTranslation } from '../../i18n';
@@ -130,6 +132,43 @@ export default function AdminSettings() {
           <SettingsInput label={t('max_drivers')} path="search.maxDriversPerSearch" type="number" form={form} update={update} />
           <SettingsInput label={t('expansion_step')} path="search.expansionStep" type="number" form={form} update={update} />
           <SettingsInput label={t('max_expansions')} path="search.maxExpansions" type="number" form={form} update={update} />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title={t('ride_matching')}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-300 min-w-[100px]">{t('matching_mode')}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  update('matching.mode', 'nearby');
+                  emitMatchingMode('nearby');
+                }}
+                className={`px-4 py-2 rounded-btn text-sm font-medium transition-all ${
+                  form.matching?.mode === 'nearby'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                {t('nearby_drivers')}
+              </button>
+              <button
+                onClick={() => {
+                  update('matching.mode', 'all');
+                  emitMatchingMode('all');
+                }}
+                className={`px-4 py-2 rounded-btn text-sm font-medium transition-all ${
+                  form.matching?.mode === 'all'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                {t('all_drivers')}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">{t('matching_mode_hint')}</p>
         </div>
       </SettingsSection>
 

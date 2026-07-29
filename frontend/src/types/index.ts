@@ -207,6 +207,9 @@ export interface Settings {
     defaultLanguage: string;
     availableLanguages: string[];
   };
+  matching: {
+    mode: 'nearby' | 'all';
+  };
 }
 
 export type RideStatus = Order['status'];

@@ -64,6 +64,9 @@ export interface ISettings extends Document {
     defaultLanguage: string;
     availableLanguages: string[];
   };
+  matching: {
+    mode: 'nearby' | 'all';
+  };
 }
 
 const settingsSchema = new Schema<ISettings>({
@@ -145,6 +148,9 @@ const settingsSchema = new Schema<ISettings>({
     privacyUrl: { type: String, default: 'https://taxigo.uz/privacy' },
     defaultLanguage: { type: String, default: 'uz' },
     availableLanguages: { type: [String], default: ['uz', 'ru', 'en'] },
+  },
+  matching: {
+    mode: { type: String, enum: ['nearby', 'all'], default: 'nearby' },
   },
 });
 

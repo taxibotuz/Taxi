@@ -120,7 +120,6 @@ export default function DriverRideActive({ order, onStatusChanged }: Props) {
           destination={{ lat: destCoords[0], lng: destCoords[1] }}
           route={[{ lat: pickupCoords[0], lng: pickupCoords[1] }, { lat: destCoords[0], lng: destCoords[1] }]}
           showSatelliteToggle={false}
-          showDistrict={false}
         />
       </div>
 
@@ -198,6 +197,18 @@ export default function DriverRideActive({ order, onStatusChanged }: Props) {
 
         {/* Action Buttons */}
         {getActionButtons()}
+
+        {/* Navigate Button */}
+        {(order.status === 'accepted' || order.status === 'arrived') && (
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${destCoords[0]},${destCoords[1]}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-500/15 text-blue-400 font-semibold text-sm hover:bg-blue-500/25 active:scale-[0.97] transition-all"
+          >
+            🧭 {t('navigate')}
+          </a>
+        )}
 
         {/* Status badge */}
         <div className="text-center">

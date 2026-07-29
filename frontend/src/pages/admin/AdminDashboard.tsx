@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { adminApi } from '../../services/api';
-import { connectSocket, subscribeToDriverLocation, subscribeToAdminUpdates } from '../../services/socket';
+import { connectSocket, subscribeToDriverLocation, subscribeToAdminUpdates, subscribeToMatchingMode } from '../../services/socket';
 import { useAuthStore } from '../../store/authStore';
 import MapView from '../../components/ui/MapView';
 import { districtConfig, getDefaultCenter } from '../../services/geo';
@@ -46,6 +46,7 @@ export default function AdminDashboard() {
 
   const [driverCounts, setDriverCounts] = useState({ online: 0, busy: 0, offline: 0 });
   const [activeRides, setActiveRides] = useState<any[]>([]);
+  const [matchingMode, setMatchingMode] = useState<'nearby' | 'all'>('nearby');
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'dashboard'],
@@ -58,6 +59,17 @@ export default function AdminDashboard() {
     queryFn: () => adminApi.getDriversLocations(),
     refetchInterval: 30000,
   });
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['admin', 'settings'],
+    queryFn: () => adminApi.getSettings(),
+  });
+
+  useEffect(() => {
+    if (settingsData?.data?.settings?.matching?.mode) {
+      setMatchingMode(settingsData.data.settings.matching.mode);
+    }
+  }, [settingsData]);
 
   useEffect(() => {
     if (!locationsData?.data?.drivers) return;
@@ -128,7 +140,11 @@ export default function AdminDashboard() {
       }
     });
 
-    return () => { unsub(); unsubAdmin(); };
+    const unsubMode = subscribeToMatchingMode((data) => {
+      setMatchingMode(data.mode);
+    });
+
+    return () => { unsub(); unsubAdmin(); unsubMode(); };
   }, [token]);
 
   const s = data?.data?.stats;
@@ -171,8 +187,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-4">
-      <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xl font-bold">
+      <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xl font-bold flex items-center gap-3">
         {t('dashboard_overview')}
+        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+          matchingMode === 'all'
+            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+            : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+        }`}>
+          {matchingMode === 'all' ? t('all_drivers') : t('nearby_drivers')}
+        </span>
       </motion.h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -256,13 +279,12 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="h-56 sm:h-64 md:h-80">
-          <MapView
-            center={mapCenter}
-            zoom={districtConfig.zoom}
-            markers={driverMarkers}
-            showDistrict
-            showSatelliteToggle={false}
-          />
+                <MapView
+                  center={mapCenter}
+                  zoom={districtConfig.zoom}
+                  markers={driverMarkers}
+                  showSatelliteToggle={false}
+                />
         </div>
       </motion.div>
 

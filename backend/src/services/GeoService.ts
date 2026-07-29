@@ -70,7 +70,7 @@ export class GeoService {
     if (!inside) {
       return {
         valid: false,
-        error: 'Bu hudud TaxiGo xizmat ko\'rsatish zonasidan tashqarida.',
+        error: 'This location is outside TaxiGo service area.',
       };
     }
 
@@ -82,7 +82,7 @@ export class GeoService {
     lng: number,
   ): { valid: true } | { valid: false; error: string; field: string } {
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      return { valid: false, error: 'Invalid coordinates', field: 'pickup' };
+      return { valid: false, error: 'This location is outside TaxiGo service area.', field: 'pickup' };
     }
 
     const polygon = GeoService.getBoundary();
@@ -91,7 +91,7 @@ export class GeoService {
     if (!inside) {
       return {
         valid: false,
-        error: "Bu hudud TaxiGo xizmat ko'rsatish zonasidan tashqarida.",
+        error: 'This location is outside TaxiGo service area.',
         field: 'pickup',
       };
     }
@@ -104,7 +104,7 @@ export class GeoService {
     lng: number,
   ): { valid: true } | { valid: false; error: string; field: string } {
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      return { valid: false, error: 'Invalid coordinates', field: 'destination' };
+      return { valid: false, error: 'This location is outside TaxiGo service area.', field: 'destination' };
     }
 
     const polygon = GeoService.getBoundary();
@@ -113,7 +113,7 @@ export class GeoService {
     if (!inside) {
       return {
         valid: false,
-        error: "Belgilangan manzil xizmat ko'rsatish hududidan tashqarida.",
+        error: 'This location is outside TaxiGo service area.',
         field: 'destination',
       };
     }
@@ -126,6 +126,28 @@ export class GeoService {
       name: config.district.name,
       center: config.district.center,
       boundary: GeoService.getBoundary(),
+    };
+  }
+
+  static getGeoJsonPolygon(): object {
+    const boundary = GeoService.getBoundary();
+    const coords = boundary.map(p => [p.lng, p.lat]);
+    coords.push(coords[0]);
+    return {
+      type: 'Feature',
+      properties: {
+        name: config.district.name,
+        style: {
+          border: '#00C853',
+          weight: 3,
+          fillColor: '#00C853',
+          fillOpacity: 0.25,
+        },
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [coords],
+      },
     };
   }
 }

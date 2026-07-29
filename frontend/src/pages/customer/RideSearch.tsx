@@ -22,6 +22,7 @@ export default function RideSearch() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
   const [rating, setRating] = useState<number>(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [routeGeometry, setRouteGeometry] = useState<Array<{ lat: number; lng: number }>>([]);
 
   const pickupInside = pickup ? isInsideDistrict(pickup) : false;
   const destInside = destination ? isInsideDistrict(destination) : false;
@@ -43,7 +44,7 @@ export default function RideSearch() {
     else if (destination) setMapCenter([destination.lat, destination.lng]);
   }, [pickup, destination]);
 
-  const route = pickup && destination ? [pickup, destination] : [];
+  const route = routeGeometry.length >= 2 ? routeGeometry : (pickup && destination ? [pickup, destination] : []);
   const distance = pickup && destination ? calcDistance(pickup.lat, pickup.lng, destination.lat, destination.lng) : 0;
   const etaSeconds = distance * 60 * 2;
   const duration = Math.round(distance * 2 + 3);
@@ -77,6 +78,9 @@ export default function RideSearch() {
             rating: data.driverInfo.rating,
           },
         } as any);
+      }
+      if (pickup && destination) {
+        fetchRouteGeometry(pickup.lat, pickup.lng, destination.lat, destination.lng);
       }
       setStep('found');
       setIsSearching(false);
@@ -171,7 +175,6 @@ export default function RideSearch() {
           destination={destination}
           driverLocation={step === 'found' ? driverLocation : null}
           route={route}
-          showDistrict
           showSatelliteToggle
           showETA
           etaSeconds={etaSeconds}
@@ -531,4 +534,22 @@ function calcDistance(lat1: number, lng1: number, lat2: number, lng2: number): n
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c * 10) / 10;
+}
+
+async function fetchRouteGeometry(
+  fromLat: number, fromLng: number, toLat: number, toLng: number
+): Promise<Array<{ lat: number; lng: number }>> {
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const token = useAuthStore.getState().token;
+  try {
+    const res = await fetch(
+      `${apiUrl}/api/rides/route?originLat=${fromLat}&originLng=${fromLng}&destLat=${toLat}&destLng=${toLng}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.route?.geometry || [];
+  } catch {
+    return [];
+  }
 }

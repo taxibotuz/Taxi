@@ -160,28 +160,6 @@ export default function DriverDashboard() {
         </motion.div>
       )}
 
-      {/* Subscription Status */}
-      {driver?.subscription?.active && driver?.subscription?.expiresAt && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-card p-3 text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center gap-2"
-        >
-          <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-          {t('subscription_active')} • {t('subscription_expires')}: {new Date(driver.subscription.expiresAt).toLocaleDateString()}
-        </motion.div>
-      )}
-      {driver?.subscription && !driver?.subscription?.active && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-card p-3 text-xs font-medium bg-red-500/10 border border-red-500/30 text-red-400 flex items-center gap-2"
-        >
-          <div className="w-2 h-2 rounded-full bg-red-500" />
-          {t('subscription_expired_warning')}
-        </motion.div>
-      )}
-
       {/* Active Ride */}
       {activeOrder && (
         <DriverRideActive order={activeOrder} onStatusChanged={handleStatusChanged} />

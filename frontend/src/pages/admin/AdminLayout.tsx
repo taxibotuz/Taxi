@@ -14,7 +14,6 @@ export default function AdminLayout() {
     { path: '/admin/drivers', label: t('admin_drivers'), icon: '🚗' },
     { path: '/admin/orders', label: t('admin_orders'), icon: '📦' },
     { path: '/admin/users', label: t('admin_users'), icon: '👥' },
-    { path: '/admin/subscriptions', label: t('manage_subscriptions'), icon: '💳' },
     { path: '/admin/reports', label: t('admin_reports'), icon: '📈' },
     { path: '/admin/notifications', label: t('admin_notify'), icon: '📢' },
     { path: '/admin/settings', label: t('admin_settings'), icon: '⚙️' },
