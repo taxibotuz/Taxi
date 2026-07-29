@@ -199,8 +199,8 @@ export class DriverMatchingService {
   async acceptRide(
     driverId: string,
     rideId: string,
-    onSuccess: (notifiedDriverIds: string[]) => void,
-    onTaken: () => void
+    onSuccess: (notifiedDriverIds: string[]) => Promise<void>,
+    onTaken: () => Promise<void>
   ): Promise<void> {
     const key = `ride:${rideId}:accepted`;
     const accepted = await this.redis.setNX(key, driverId, 30);
@@ -208,9 +208,17 @@ export class DriverMatchingService {
     if (accepted) {
       const notifiedDrivers = this.rideNotifiedDrivers.get(rideId) || [];
       this.cleanupRide(rideId);
-      onSuccess(notifiedDrivers);
+      try {
+        await onSuccess(notifiedDrivers);
+      } catch (error) {
+        logger.error('acceptRide onSuccess callback error:', error);
+      }
     } else {
-      onTaken();
+      try {
+        await onTaken();
+      } catch (error) {
+        logger.error('acceptRide onTaken callback error:', error);
+      }
     }
   }
 

@@ -29,7 +29,7 @@ export class DriverController {
         Order.countDocuments({ driverId: driver._id, createdAt: { $gte: todayStart } }),
         Order.countDocuments({ driverId: driver._id, createdAt: { $gte: weekStart } }),
         Order.countDocuments({ driverId: driver._id, createdAt: { $gte: monthStart } }),
-        Order.findOne({ driverId: driver._id, status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS] } }),
+        Order.findOne({ driverId: driver._id, status: { $in: [RideStatus.ACCEPTED, RideStatus.ARRIVED, RideStatus.IN_PROGRESS] } }).populate('customerId', 'firstName lastName phone photoUrl'),
         Order.aggregate([
           { $match: { driverId: driver._id, status: RideStatus.COMPLETED, createdAt: { $gte: todayStart } } },
           { $group: { _id: null, total: { $sum: '$pricing.total' } } },

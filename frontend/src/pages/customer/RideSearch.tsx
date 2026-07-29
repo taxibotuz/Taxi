@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRideStore } from '../../store/rideStore';
-import { ridesApi } from '../../services/api';
+import { ridesApi, reviewsApi } from '../../services/api';
 import { connectSocket, subscribeToDriverLocation, getSocket } from '../../services/socket';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -20,6 +20,8 @@ export default function RideSearch() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [offeredPrice, setOfferedPrice] = useState<number>(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
+  const [rating, setRating] = useState<number>(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   const pickupInside = pickup ? isInsideDistrict(pickup) : false;
   const destInside = destination ? isInsideDistrict(destination) : false;
@@ -63,7 +65,18 @@ export default function RideSearch() {
             photoUrl: data.driverInfo.photoUrl,
           },
         };
-        store.setCurrentOrder({ ...store.currentOrder, driverId: driverData } as any);
+        store.setCurrentOrder({
+          ...store.currentOrder,
+          driverId: driverData,
+          driverInfo: {
+            _id: data.driverId,
+            firstName: data.driverInfo.firstName,
+            lastName: data.driverInfo.lastName,
+            phone: data.driverInfo.phone,
+            photoUrl: data.driverInfo.photoUrl,
+            rating: data.driverInfo.rating,
+          },
+        } as any);
       }
       setStep('found');
       setIsSearching(false);
@@ -81,8 +94,9 @@ export default function RideSearch() {
     const onCompleted = (_data: any) => {
       toast.success(t('ride_completed'));
       setStep('completed');
+      setRating(0);
+      setRatingSubmitted(false);
       setIsSearching(false);
-      setTimeout(() => { navigate('/'); }, 3000);
     };
 
     const onCancelled = (data: any) => {
@@ -446,12 +460,62 @@ export default function RideSearch() {
               <h2 className="text-lg sm:text-xl font-semibold text-green-400">{t('ride_completed')}</h2>
               <p className="text-gray-400 text-sm mt-1">{t('thank_you')}</p>
             </div>
-            <button
-              onClick={() => navigate('/')}
-              className="w-full py-3 rounded-card bg-primary-500 text-white font-semibold text-sm shadow-btn hover:bg-primary-600 active:scale-[0.98] transition-all"
-            >
-              {t('nav_home')}
-            </button>
+
+            {!ratingSubmitted && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">{t('rate_driver')}</p>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className={`text-3xl transition-all active:scale-125 ${
+                          star <= rating ? 'text-yellow-400 scale-110' : 'text-gray-600'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (rating === 0) return;
+                    try {
+                      await reviewsApi.createReview({
+                        orderId: currentOrder?._id,
+                        rating,
+                        comment: '',
+                        targetId: (currentOrder as any)?.driverId?._id || (currentOrder as any)?.driverInfo?._id,
+                        targetType: 'driver',
+                      });
+                      setRatingSubmitted(true);
+                      toast.success(t('rating_submitted'));
+                    } catch {
+                      toast.error(t('failed_submit_rating'));
+                    }
+                  }}
+                  disabled={rating === 0}
+                  className={`w-full py-3 rounded-card font-semibold text-sm shadow-btn active:scale-[0.98] transition-all ${
+                    rating === 0
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-primary-500 text-white hover:bg-primary-600'
+                  }`}
+                >
+                  {t('submit_rating')}
+                </button>
+              </>
+            )}
+
+            {ratingSubmitted && (
+              <button
+                onClick={() => navigate('/')}
+                className="w-full py-3 rounded-card bg-primary-500 text-white font-semibold text-sm shadow-btn hover:bg-primary-600 active:scale-[0.98] transition-all"
+              >
+                {t('nav_home')}
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

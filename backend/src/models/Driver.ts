@@ -31,6 +31,7 @@ export interface IDriver extends Document {
   todayEarnings: number;
   weeklyEarnings: number;
   monthlyEarnings: number;
+  lastCompletedAt?: Date;
   isAvailable: boolean;
   isSuspended: boolean;
   isBlacklisted: boolean;
@@ -78,6 +79,7 @@ const driverSchema = new Schema<IDriver>(
     todayEarnings: { type: Number, default: 0 },
     weeklyEarnings: { type: Number, default: 0 },
     monthlyEarnings: { type: Number, default: 0 },
+    lastCompletedAt: { type: Date },
     isAvailable: { type: Boolean, default: false },
     isSuspended: { type: Boolean, default: false },
     isBlacklisted: { type: Boolean, default: false },

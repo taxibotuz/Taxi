@@ -1,5 +1,7 @@
 import { Server as HTTPServer } from 'http';
 import { Server, Socket } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { Redis } from 'ioredis';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { logger } from '../config/logger';
@@ -31,6 +33,17 @@ export class SocketService {
 
     this.driverMatchingService = DriverMatchingService.getInstance();
     this.locationBatcher = LocationBatcher.getInstance();
+
+    if (config.redis.url) {
+      try {
+        const pubClient = new Redis(config.redis.url);
+        const subClient = pubClient.duplicate();
+        this.io.adapter(createAdapter(pubClient, subClient));
+        logger.info('Socket.IO Redis adapter enabled');
+      } catch (err) {
+        logger.error('Failed to enable Socket.IO Redis adapter, falling back to in-memory', err);
+      }
+    }
 
     this.io.use(async (socket, next) => {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
@@ -130,6 +143,11 @@ export class SocketService {
           const driver = await Driver.findOne({ userId });
           if (!driver) return;
 
+          if (driver.status !== DriverStatus.ONLINE) {
+            socket.emit('ride:taken', { rideId: data.rideId, reason: 'Driver is not available' });
+            return;
+          }
+
           this.driverMatchingService.acceptRide(
             driver._id.toString(),
             data.rideId,
@@ -192,7 +210,7 @@ export class SocketService {
                 status: 'busy',
               });
             },
-            () => {
+            async () => {
               socket.emit('ride:taken', { rideId: data.rideId });
             }
           );

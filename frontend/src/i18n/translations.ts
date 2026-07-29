@@ -61,6 +61,10 @@ const translations: Record<Language, Record<string, string>> = {
     driver_arrived: 'Haydovchi yetib keldi!',
     ride_started: 'Sayohat boshlandi',
     failed_get_estimate: 'Narx hisoblanmadi',
+    rate_driver: 'Haydovchini baholang',
+    submit_rating: 'Baholash',
+    rating_submitted: 'Bahoyingiz qabul qilindi!',
+    failed_submit_rating: 'Baholashda xatolik yuz berdi',
 
     // Ride History
     ride_history: 'Safarlar tarixi',
@@ -548,6 +552,10 @@ const translations: Record<Language, Record<string, string>> = {
     driver_arrived: 'Водитель прибыл!',
     ride_started: 'Поездка началась',
     failed_get_estimate: 'Не удалось рассчитать цену',
+    rate_driver: 'Оцените водителя',
+    submit_rating: 'Оценить',
+    rating_submitted: 'Ваша оценка принята!',
+    failed_submit_rating: 'Ошибка при оценке',
 
     // Ride History
     ride_history: 'История поездок',

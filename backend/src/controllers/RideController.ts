@@ -280,6 +280,7 @@ export class RideController {
         reason,
         orderNumber: order.orderNumber,
         prevStatus,
+        status: RideStatus.CANCELLED,
       };
 
       SocketService.emitToUser(order.customerId.toString(), 'ride:cancelled', eventPayload);
@@ -382,16 +383,51 @@ export class RideController {
             weekStart.setDate(weekStart.getDate() - weekStart.getDay());
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            await Driver.findByIdAndUpdate(order.driverId, {
-              $inc: {
-                totalRides: 1,
-                totalEarnings: order.pricing.total,
-                todayEarnings: order.pricing.total,
-                weeklyEarnings: order.pricing.total,
-                monthlyEarnings: order.pricing.total,
-              },
-              $set: { status: DriverStatus.ONLINE, isAvailable: true },
-            });
+            const driverDoc = await Driver.findById(order.driverId).select(
+              'todayEarnings weeklyEarnings monthlyEarnings totalEarnings totalRides lastCompletedAt'
+            );
+
+            if (driverDoc) {
+              let { todayEarnings, weeklyEarnings, monthlyEarnings } = driverDoc;
+              const { lastCompletedAt } = driverDoc;
+
+              if (!lastCompletedAt || lastCompletedAt < today) {
+                todayEarnings = 0;
+              }
+              if (!lastCompletedAt || lastCompletedAt < weekStart) {
+                weeklyEarnings = 0;
+              }
+              if (!lastCompletedAt || lastCompletedAt < monthStart) {
+                monthlyEarnings = 0;
+              }
+
+              todayEarnings += order.pricing.total;
+              weeklyEarnings += order.pricing.total;
+              monthlyEarnings += order.pricing.total;
+
+              await Driver.findByIdAndUpdate(order.driverId, {
+                $inc: { totalRides: 1, totalEarnings: order.pricing.total },
+                $set: {
+                  todayEarnings,
+                  weeklyEarnings,
+                  monthlyEarnings,
+                  status: DriverStatus.ONLINE,
+                  isAvailable: true,
+                  lastCompletedAt: now,
+                },
+              });
+            } else {
+              await Driver.findByIdAndUpdate(order.driverId, {
+                $inc: {
+                  totalRides: 1,
+                  totalEarnings: order.pricing.total,
+                  todayEarnings: order.pricing.total,
+                  weeklyEarnings: order.pricing.total,
+                  monthlyEarnings: order.pricing.total,
+                },
+                $set: { status: DriverStatus.ONLINE, isAvailable: true },
+              });
+            }
 
             SocketService.emitToAdmins('admin:driver:update', {
               driverId: order.driverId,
