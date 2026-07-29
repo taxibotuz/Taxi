@@ -1,19 +1,27 @@
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { driversApi } from '../../services/api';
 import { isInsideDistrict } from '../../services/geo';
 import { useLocationTracking } from '../../hooks/useLocationTracking';
+import { connectSocket, subscribeToRideRequests } from '../../services/socket';
+import { useAuthStore } from '../../store/authStore';
+import DriverRideRequest from '../../components/driver/DriverRideRequest';
+import DriverRideActive from '../../components/driver/DriverRideActive';
 import toast from 'react-hot-toast';
 import { useTranslation } from '../../i18n';
 
 export default function DriverDashboard() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const token = useAuthStore((s) => s.token);
+  const [rideRequest, setRideRequest] = useState<any>(null);
+  const [activeOrder, setActiveOrder] = useState<any>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['driver', 'dashboard'],
     queryFn: () => driversApi.getDashboard(),
-    refetchInterval: 10000,
+    refetchInterval: 15000,
   });
 
   const toggleMutation = useMutation({
@@ -26,7 +34,45 @@ export default function DriverDashboard() {
 
   const driver = data?.data?.driver;
   const stats = data?.data?.stats;
-  const activeRide = data?.data?.activeRide;
+  const ride = data?.data?.activeRide;
+
+  useEffect(() => {
+    if (ride) setActiveOrder(ride);
+    else if (!rideRequest) setActiveOrder(null);
+  }, [ride]);
+
+  useEffect(() => {
+    if (!token) return;
+    const socket = connectSocket(token);
+
+    const unsub = subscribeToRideRequests((data: any) => {
+      if (data.rideId) {
+        setRideRequest(data);
+      }
+      if (data.status === 'cancelled') {
+        setRideRequest(null);
+        setActiveOrder((prev: any) => {
+          if (prev?._id === data.rideId) return null;
+          return prev;
+        });
+      }
+    });
+
+    return () => unsub();
+  }, [token]);
+
+  const handleAccepted = () => {
+    setRideRequest(null);
+    setTimeout(() => refetch(), 500);
+  };
+
+  const handleRequestExpired = () => {
+    setRideRequest(null);
+  };
+
+  const handleStatusChanged = () => {
+    refetch();
+  };
 
   const driverLocation = driver?.currentLocation?.coordinates
     ? { lat: driver.currentLocation.coordinates[1], lng: driver.currentLocation.coordinates[0] }
@@ -137,24 +183,8 @@ export default function DriverDashboard() {
       )}
 
       {/* Active Ride */}
-      {activeRide && (
-        <motion.div
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="glass rounded-card p-4 border-l-4 border-green-500"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-            <span className="font-semibold text-sm">{t('active_ride')}</span>
-          </div>
-          <p className="text-xs text-gray-400 mt-2 truncate">
-            #{activeRide.orderNumber} • {activeRide.pickup.address}
-          </p>
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-green-400">
-            <span>💵</span>
-            <span className="font-medium">{t('cash')}</span>
-          </div>
-        </motion.div>
+      {activeOrder && (
+        <DriverRideActive order={activeOrder} onStatusChanged={handleStatusChanged} />
       )}
 
       {/* Earnings Stats */}
@@ -207,6 +237,17 @@ export default function DriverDashboard() {
           <p className="text-xs text-gray-500 mt-1">{t('account_reviewing')}</p>
         </motion.div>
       )}
+
+      {/* Ride Request Popup */}
+      <AnimatePresence>
+        {rideRequest && !activeOrder && (
+          <DriverRideRequest
+            request={rideRequest}
+            onExpired={handleRequestExpired}
+            onAccepted={handleAccepted}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

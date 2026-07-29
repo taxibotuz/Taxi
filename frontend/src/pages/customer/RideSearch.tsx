@@ -322,14 +322,28 @@ export default function RideSearch() {
           >
             {/* Driver Info */}
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-500/20 border-2 border-primary-500 flex items-center justify-center text-2xl flex-shrink-0">
-                🚗
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-500/20 border-2 border-primary-500 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                {(currentOrder as any).driverInfo?.photoUrl ? (
+                  <img src={(currentOrder as any).driverInfo.photoUrl} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  '🚗'
+                )}
               </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-sm sm:text-base">{t('driver_on_way')}</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-sm sm:text-base">
+                  {(currentOrder as any).driverInfo?.firstName || t('driver_on_way')}
+                </h3>
                 <p className="text-xs sm:text-sm text-gray-400 truncate">
                   {currentOrder.driverId?.car?.brand} {currentOrder.driverId?.car?.model} • {currentOrder.driverId?.car?.color}
                 </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-yellow-400 text-xs">⭐ {(currentOrder as any).driverInfo?.rating || currentOrder.driverId?.rating?.toFixed(1) || '5.0'}</span>
+                  {(currentOrder as any).driverInfo?.phone && (
+                    <a href={`tel:${(currentOrder as any).driverInfo.phone}`} className="text-xs text-green-400 hover:underline">
+                      {(currentOrder as any).driverInfo.phone}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -343,9 +357,12 @@ export default function RideSearch() {
 
             {/* Action Buttons */}
             <div className="grid grid-cols-3 gap-2">
-              <button className="py-3 rounded-btn bg-green-500/15 text-green-400 text-sm font-medium hover:bg-green-500/25 active:scale-[0.97] transition-all">
+              <a
+                href={`tel:${(currentOrder as any).driverInfo?.phone || ''}`}
+                className="py-3 rounded-btn bg-green-500/15 text-green-400 text-sm font-medium hover:bg-green-500/25 active:scale-[0.97] transition-all text-center"
+              >
                 {t('call')}
-              </button>
+              </a>
               <button className="py-3 rounded-btn bg-primary-500/15 text-primary-400 text-sm font-medium hover:bg-primary-500/25 active:scale-[0.97] transition-all">
                 {t('chat')}
               </button>
@@ -365,14 +382,28 @@ export default function RideSearch() {
             className="glass border-t border-white/5 rounded-t-sheet p-4 sm:p-5 space-y-4"
           >
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center text-2xl flex-shrink-0 animate-pulse">
-                🚗
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center text-2xl flex-shrink-0 animate-pulse overflow-hidden">
+                {(currentOrder as any).driverInfo?.photoUrl ? (
+                  <img src={(currentOrder as any).driverInfo.photoUrl} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  '🚗'
+                )}
               </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-sm sm:text-base">{t('ride_started')}</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-sm sm:text-base">
+                  {(currentOrder as any).driverInfo?.firstName || t('ride_started')}
+                </h3>
                 <p className="text-xs sm:text-sm text-gray-400 truncate">
                   {currentOrder.driverId?.car?.brand} {currentOrder.driverId?.car?.model} • {currentOrder.driverId?.car?.plateNumber}
                 </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-yellow-400 text-xs">⭐ {(currentOrder as any).driverInfo?.rating || currentOrder.driverId?.rating?.toFixed(1) || '5.0'}</span>
+                  {(currentOrder as any).driverInfo?.phone && (
+                    <a href={`tel:${(currentOrder as any).driverInfo.phone}`} className="text-xs text-green-400 hover:underline">
+                      {(currentOrder as any).driverInfo.phone}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -384,9 +415,12 @@ export default function RideSearch() {
             )}
 
             <div className="grid grid-cols-3 gap-2">
-              <button className="py-3 rounded-btn bg-green-500/15 text-green-400 text-sm font-medium hover:bg-green-500/25 active:scale-[0.97] transition-all">
+              <a
+                href={`tel:${(currentOrder as any).driverInfo?.phone || ''}`}
+                className="py-3 rounded-btn bg-green-500/15 text-green-400 text-sm font-medium hover:bg-green-500/25 active:scale-[0.97] transition-all text-center"
+              >
                 {t('call')}
-              </button>
+              </a>
               <button className="py-3 rounded-btn bg-primary-500/15 text-primary-400 text-sm font-medium hover:bg-primary-500/25 active:scale-[0.97] transition-all">
                 {t('chat')}
               </button>

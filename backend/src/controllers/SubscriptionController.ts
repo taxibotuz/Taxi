@@ -1,6 +1,8 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { Driver } from '../models/Driver';
+import { User } from '../models/User';
 import { Subscription } from '../models/Subscription';
 import { SubscriptionPlan } from '../models/SubscriptionPlan';
 import { ActivityLog } from '../models/ActivityLog';
@@ -197,14 +199,18 @@ export class SubscriptionController {
     try {
       const { driverId, planId, durationDays, paymentAmount } = req.body;
 
-      const driver = await Driver.findById(driverId);
+      if (!driverId) {
+        return res.status(400).json({ success: false, message: 'Invalid driver identifier' });
+      }
+
+      const driver = await this.resolveDriverByIdentifier(driverId);
       if (!driver) {
-        return res.status(404).json({ error: 'Driver not found' });
+        return res.status(400).json({ success: false, message: 'Invalid driver identifier' });
       }
 
       const plan = await SubscriptionPlan.findById(planId);
       if (!plan) {
-        return res.status(404).json({ error: 'Plan not found' });
+        return res.status(404).json({ success: false, message: 'Plan not found' });
       }
 
       const now = new Date();
@@ -254,10 +260,29 @@ export class SubscriptionController {
     }
   }
 
+  private async resolveDriverByIdentifier(driverId: string) {
+    if (mongoose.Types.ObjectId.isValid(driverId)) {
+      return await Driver.findById(driverId);
+    }
+    const user = await User.findOne({ telegramId: Number(driverId) });
+    if (!user) return null;
+    return await Driver.findOne({ userId: user._id });
+  }
+
   async getDriverSubscriptions(req: AuthRequest, res: Response) {
     try {
       const { driverId } = req.params;
-      const subscriptions = await Subscription.find({ driverId })
+
+      if (!driverId) {
+        return res.status(400).json({ success: false, message: 'Invalid driver identifier' });
+      }
+
+      const driver = await this.resolveDriverByIdentifier(driverId);
+      if (!driver) {
+        return res.status(400).json({ success: false, message: 'Invalid driver identifier' });
+      }
+
+      const subscriptions = await Subscription.find({ driverId: driver._id })
         .sort({ createdAt: -1 })
         .populate('planId', 'name description durationDays price')
         .lean();

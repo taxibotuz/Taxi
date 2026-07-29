@@ -8,7 +8,7 @@ import { DriverMatchingService, DriverWithRoute } from '../services/DriverMatchi
 import { GeoService } from '../services/GeoService';
 import { SocketService } from '../sockets/SocketService';
 import { TelegramBot } from '../bot';
-import { RideStatus, PaymentMethod, OrderType } from '../types';
+import { RideStatus, PaymentMethod, OrderType, DriverStatus } from '../types';
 import { logger } from '../config/logger';
 
 const pricingService = new PricingService();
@@ -112,12 +112,21 @@ export class RideController {
         }
         SocketService.emitToDriver(driver._id.toString(), 'ride:request', {
           rideId: order._id.toString(),
-          pickupAddress,
-          destAddress,
+          pickup: { address: pickupAddress, coordinates: [pickupLng, pickupLat] },
+          destination: { address: destAddress, coordinates: [destLng, destLat] },
           distance,
+          duration,
           price: total,
+          driverDistance: driver.routeDistanceKm,
+          driverEta: driver.routeDurationMin,
+          pickupLat,
+          pickupLng,
+          destLat,
+          destLng,
         });
       };
+
+      const customer = await User.findById(req.user!._id).select('firstName lastName phone');
 
       driverMatchingService.startSearch(
         order._id.toString(),
@@ -135,16 +144,32 @@ export class RideController {
           order.acceptedAt = new Date();
           await order.save();
 
-          SocketService.emitToUser(order.customerId.toString(), 'ride:accepted', {
+          await Driver.findByIdAndUpdate(driver._id, { status: DriverStatus.BUSY, isAvailable: false });
+
+          const driverUser = await User.findById(driver.userId).select('firstName lastName photoUrl phone');
+          const acceptedPayload = {
             rideId: order._id,
+            orderId: order._id,
             driverId: driver._id,
             driverInfo: {
-              firstName: (driver as any).user?.firstName,
-              photoUrl: (driver as any).user?.photoUrl,
+              firstName: driverUser?.firstName,
+              lastName: driverUser?.lastName,
+              photoUrl: driverUser?.photoUrl,
+              phone: driverUser?.phone,
               car: driver.car,
               rating: driver.rating,
             },
-          });
+            pickup: { address: pickupAddress, coordinates: [pickupLng, pickupLat] },
+            destination: { address: destAddress, coordinates: [destLng, destLat] },
+            distance,
+            duration,
+            price: total,
+          };
+
+          SocketService.emitToUser(order.customerId.toString(), 'ride:accepted', acceptedPayload);
+          SocketService.emitToDriver(driver._id.toString(), 'ride:accepted', acceptedPayload);
+          SocketService.emitToAdmins('admin:ride:update', { rideId: order._id, status: RideStatus.ACCEPTED });
+          SocketService.emitToAdmins('admin:driver:update', { driverId: driver._id, status: 'busy' });
         },
         async () => {
           order.status = RideStatus.CANCELLED;
@@ -167,6 +192,8 @@ export class RideController {
         rideId: order._id,
         status: 'searching',
       });
+
+      SocketService.emitToAdmins('admin:ride:update', { rideId: order._id, status: RideStatus.SEARCHING });
 
       return res.status(201).json({ order });
     } catch (error) {
@@ -241,18 +268,39 @@ export class RideController {
         return res.status(400).json({ error: 'Order cannot be cancelled at this stage' });
       }
 
+      const prevStatus = order.status;
       order.status = RideStatus.CANCELLED;
       order.cancelledBy = 'customer';
       order.cancelReason = reason;
       order.cancelledAt = new Date();
       await order.save();
 
+      const eventPayload = {
+        rideId: order._id,
+        reason,
+        orderNumber: order.orderNumber,
+        prevStatus,
+      };
+
+      SocketService.emitToUser(order.customerId.toString(), 'ride:cancelled', eventPayload);
+
       if (order.driverId) {
-        SocketService.emitToDriver(order.driverId.toString(), 'ride:cancelled', {
-          rideId: order._id,
-          reason,
+        SocketService.emitToDriver(order.driverId.toString(), 'ride:cancelled', eventPayload);
+
+        await Driver.findByIdAndUpdate(order.driverId, {
+          $set: { status: DriverStatus.ONLINE, isAvailable: true },
+        });
+        SocketService.emitToAdmins('admin:driver:update', {
+          driverId: order.driverId,
+          status: 'online',
         });
       }
+
+      SocketService.emitToAdmins('admin:ride:update', {
+        rideId: order._id,
+        status: RideStatus.CANCELLED,
+        orderNumber: order.orderNumber,
+      });
 
       return res.json({ order });
     } catch (error) {
@@ -293,6 +341,25 @@ export class RideController {
         }
       }
 
+      const prevStatus = order.status;
+      if (prevStatus === status) {
+        return res.status(400).json({ error: `Order is already in ${status} status` });
+      }
+
+      const validTransitions: Record<string, string[]> = {
+        [RideStatus.SEARCHING]: [RideStatus.ACCEPTED, RideStatus.CANCELLED],
+        [RideStatus.ACCEPTED]: [RideStatus.ARRIVED, RideStatus.CANCELLED],
+        [RideStatus.ARRIVED]: [RideStatus.IN_PROGRESS, RideStatus.CANCELLED],
+        [RideStatus.IN_PROGRESS]: [RideStatus.COMPLETED, RideStatus.CANCELLED],
+        [RideStatus.COMPLETED]: [],
+        [RideStatus.CANCELLED]: [],
+      };
+
+      const allowedNext = validTransitions[prevStatus];
+      if (!allowedNext || !allowedNext.includes(status)) {
+        return res.status(400).json({ error: `Cannot transition from ${prevStatus} to ${status}` });
+      }
+
       order.status = status;
 
       switch (status) {
@@ -303,29 +370,76 @@ export class RideController {
           order.startedAt = new Date();
           break;
         case RideStatus.COMPLETED:
+          if (order.completedAt) {
+            return res.status(400).json({ error: 'Order already completed' });
+          }
           order.completedAt = new Date();
           order.paymentStatus = 'paid';
           if (order.driverId) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekStart = new Date(today);
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
             await Driver.findByIdAndUpdate(order.driverId, {
-              $inc: { totalRides: 1, totalEarnings: order.pricing.total, todayEarnings: order.pricing.total },
-              $set: { status: 'online' },
+              $inc: {
+                totalRides: 1,
+                totalEarnings: order.pricing.total,
+                todayEarnings: order.pricing.total,
+                weeklyEarnings: order.pricing.total,
+                monthlyEarnings: order.pricing.total,
+              },
+              $set: { status: DriverStatus.ONLINE, isAvailable: true },
             });
+
+            SocketService.emitToAdmins('admin:driver:update', {
+              driverId: order.driverId,
+              status: 'online',
+              earnings: order.pricing.total,
+            });
+
             SocketService.onRideCompleted(order.driverId.toString());
+          }
+          break;
+        case RideStatus.CANCELLED:
+          order.cancelledAt = new Date();
+          order.cancelledBy = userRole === 'customer' ? 'customer' : 'driver';
+          if (order.driverId) {
+            await Driver.findByIdAndUpdate(order.driverId, {
+              $set: { status: DriverStatus.ONLINE, isAvailable: true },
+            });
+            SocketService.emitToAdmins('admin:driver:update', {
+              driverId: order.driverId,
+              status: 'online',
+            });
           }
           break;
       }
 
       await order.save();
 
-      SocketService.emitToUser(order.customerId.toString(), `ride:${status}`, {
+      const eventPayload = {
         rideId: order._id,
-      });
+        orderId: order._id,
+        status,
+        orderNumber: order.orderNumber,
+        updatedAt: new Date(),
+        prevStatus,
+      };
+
+      SocketService.emitToUser(order.customerId.toString(), `ride:${status}`, eventPayload);
 
       if (order.driverId) {
-        SocketService.emitToDriver(order.driverId.toString(), `ride:${status}`, {
-          rideId: order._id,
-        });
+        SocketService.emitToDriver(order.driverId.toString(), `ride:${status}`, eventPayload);
       }
+
+      SocketService.emitToAdmins('admin:ride:update', {
+        rideId: order._id,
+        orderId: order._id,
+        status,
+        orderNumber: order.orderNumber,
+      });
 
       return res.json({ order });
     } catch (error) {

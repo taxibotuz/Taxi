@@ -46,7 +46,7 @@ export const subscribeToRideUpdates = (callback: (data: any) => void) => {
 
   s.on('ride:accepted', callback);
   s.on('ride:arrived', callback);
-  s.on('ride:started', callback);
+  s.on('ride:in_progress', callback);
   s.on('ride:completed', callback);
   s.on('ride:cancelled', callback);
   s.on('search:status', callback);
@@ -54,7 +54,7 @@ export const subscribeToRideUpdates = (callback: (data: any) => void) => {
   return () => {
     s.off('ride:accepted', callback);
     s.off('ride:arrived', callback);
-    s.off('ride:started', callback);
+    s.off('ride:in_progress', callback);
     s.off('ride:completed', callback);
     s.off('ride:cancelled', callback);
     s.off('search:status', callback);
@@ -74,10 +74,27 @@ export const subscribeToRideRequests = (callback: (data: any) => void) => {
 
   s.on('ride:request', callback);
   s.on('ride:cancelled', callback);
+  s.on('ride:taken', callback);
 
   return () => {
     s.off('ride:request', callback);
     s.off('ride:cancelled', callback);
+    s.off('ride:taken', callback);
+  };
+};
+
+export const subscribeToAdminUpdates = (callback: (data: any) => void) => {
+  const s = getSocket();
+  if (!s) return () => {};
+
+  s.on('admin:ride:update', callback);
+  s.on('admin:driver:update', callback);
+  s.on('driver:location', callback);
+
+  return () => {
+    s.off('admin:ride:update', callback);
+    s.off('admin:driver:update', callback);
+    s.off('driver:location', callback);
   };
 };
 
@@ -94,4 +111,9 @@ export const emitRideAccept = (rideId: string) => {
 export const emitRideReject = (rideId: string, reason?: string) => {
   const s = getSocket();
   if (s) s.emit('ride:reject', { rideId, reason });
+};
+
+export const emitDriverStatus = (status: string) => {
+  const s = getSocket();
+  if (s) s.emit('driver:status', { status });
 };

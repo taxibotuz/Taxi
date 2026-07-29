@@ -413,6 +413,22 @@ const translations: Record<Language, Record<string, string>> = {
     avg_fare: 'O\'rtacha narx',
     averages: 'O\'rtacha ko\'rsatkichlar',
 
+    // Driver Ride Components
+    new_ride_request: 'Yangi buyurtma',
+    reject: 'Rad etish',
+    accept: 'Qabul qilish',
+    arrived: 'Yetib keldim',
+    start_ride: 'Safar boshlash',
+    complete_ride: 'Yakunlash',
+    cancel_ride: 'Bekor qilish',
+    ride_arrived: 'Yetib keldingiz',
+    ride_in_progress: 'Safar boshlandi',
+    failed_update_status: 'Holatni yangilashda xatolik',
+    active_rides: 'Faol safarlar',
+    online_drivers: 'Faol haydovchilar',
+    busy_drivers: 'Band haydovchilar',
+    offline_drivers: 'Faol emas',
+
     // Subscriptions
     subscription: 'Obuna',
     subscription_plans: 'Obuna rejalari',
@@ -883,6 +899,22 @@ const translations: Record<Language, Record<string, string>> = {
     avg_ride_duration: 'Средняя длительность поездки',
     avg_fare: 'Средняя стоимость',
     averages: 'Средние показатели',
+
+    // Driver Ride Components
+    new_ride_request: 'Новый заказ',
+    reject: 'Отклонить',
+    accept: 'Принять',
+    arrived: 'Я прибыл',
+    start_ride: 'Начать поездку',
+    complete_ride: 'Завершить',
+    cancel_ride: 'Отменить',
+    ride_arrived: 'Вы прибыли',
+    ride_in_progress: 'Поездка началась',
+    failed_update_status: 'Ошибка обновления статуса',
+    active_rides: 'Активные поездки',
+    online_drivers: 'Онлайн водители',
+    busy_drivers: 'Занятые водители',
+    offline_drivers: 'Офлайн водители',
 
     // Subscriptions
     subscription: 'Подписка',

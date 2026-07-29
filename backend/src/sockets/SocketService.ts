@@ -7,7 +7,7 @@ import { ErrorReporter } from '../services/ErrorReporter';
 import { User } from '../models/User';
 import { Driver } from '../models/Driver';
 import { Order } from '../models/Order';
-import { RideStatus } from '../types';
+import { RideStatus, DriverStatus } from '../types';
 import { DriverMatchingService } from '../services/DriverMatchingService';
 import { LocationBatcher } from '../services/LocationBatcher';
 
@@ -73,11 +73,15 @@ export class SocketService {
 
           this.locationBatcher.queueUpdate(driver._id.toString(), data.lng, data.lat);
 
-          this.io.to('admins').emit('driver:location', {
+          const locationPayload = {
             driverId: driver._id,
             lat: data.lat,
             lng: data.lng,
-          });
+            status: driver.status,
+            isOnline: driver.isOnline,
+          };
+
+          this.io.to('admins').emit('driver:location', locationPayload);
 
           const activeOrder = await Order.findOne({
             driverId: driver._id,
@@ -86,14 +90,38 @@ export class SocketService {
 
           if (activeOrder) {
             this.io.to(`user:${activeOrder.customerId.toString()}`).emit('driver:location', {
-              driverId: driver._id,
-              lat: data.lat,
-              lng: data.lng,
+              ...locationPayload,
               orderId: activeOrder._id,
             });
           }
         } catch (error) {
           logger.error('Location update error:', error);
+        }
+      });
+
+      socket.on('driver:status', async (data: { status: string }) => {
+        try {
+          const driver = await Driver.findOne({ userId });
+          if (!driver) return;
+
+          driver.status = data.status as DriverStatus;
+          if (data.status === DriverStatus.ONLINE) {
+            driver.isOnline = true;
+            driver.isAvailable = true;
+          } else if (data.status === DriverStatus.OFFLINE) {
+            driver.isOnline = false;
+            driver.isAvailable = false;
+          } else if (data.status === DriverStatus.BUSY) {
+            driver.isAvailable = false;
+          }
+          await driver.save();
+
+          this.io.to('admins').emit('admin:driver:update', {
+            driverId: driver._id,
+            status: data.status,
+          });
+        } catch (error) {
+          logger.error('Driver status update error:', error);
         }
       });
 
@@ -114,14 +142,22 @@ export class SocketService {
               order.acceptedAt = new Date();
               await order.save();
 
+              driver.status = DriverStatus.BUSY;
+              driver.isAvailable = false;
+              await driver.save();
+
               this.driverCustomerMap.set(driver._id.toString(), order.customerId.toString());
 
               const driverUser = await User.findById(driver.userId).select('firstName lastName phone photoUrl');
+              const customer = await User.findById(order.customerId).select('firstName lastName phone photoUrl');
 
               const acceptedPayload = {
                 rideId: data.rideId,
+                orderId: data.rideId,
                 driverId: driver._id,
+                customerId: order.customerId,
                 driverInfo: {
+                  _id: driver._id,
                   firstName: driverUser?.firstName,
                   lastName: driverUser?.lastName,
                   phone: driverUser?.phone,
@@ -129,10 +165,32 @@ export class SocketService {
                   car: driver.car,
                   rating: driver.rating,
                 },
+                customerInfo: {
+                  firstName: customer?.firstName,
+                  lastName: customer?.lastName,
+                  phone: customer?.phone,
+                },
+                pickup: order.pickup,
+                destination: order.destination,
+                distance: order.distance,
+                duration: order.duration,
+                price: order.pricing.total,
+                orderNumber: order.orderNumber,
               };
 
               this.io.to(`user:${userId}`).emit('ride:accepted', acceptedPayload);
               this.io.to(`user:${order.customerId.toString()}`).emit('ride:accepted', acceptedPayload);
+
+              this.io.to('admins').emit('admin:ride:update', {
+                rideId: data.rideId,
+                orderId: data.rideId,
+                status: RideStatus.ACCEPTED,
+                orderNumber: order.orderNumber,
+              });
+              this.io.to('admins').emit('admin:driver:update', {
+                driverId: driver._id,
+                status: 'busy',
+              });
             },
             () => {
               socket.emit('ride:taken', { rideId: data.rideId });
@@ -159,6 +217,12 @@ export class SocketService {
           await this.driverMatchingService.removeDriverFromNotified(data.rideId, driver._id.toString());
 
           socket.emit('ride:rejected', { rideId: data.rideId });
+
+          this.io.to('admins').emit('admin:ride:update', {
+            rideId: data.rideId,
+            rejectedBy: driver._id,
+            rejectedCount: order.rejectedDrivers.length,
+          });
         } catch (error) {
           logger.error('Ride reject error:', error);
         }

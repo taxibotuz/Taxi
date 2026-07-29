@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { adminApi } from '../../services/api';
-import { connectSocket, subscribeToDriverLocation } from '../../services/socket';
+import { connectSocket, subscribeToDriverLocation, subscribeToAdminUpdates } from '../../services/socket';
 import { useAuthStore } from '../../store/authStore';
 import MapView from '../../components/ui/MapView';
 import { districtConfig, getDefaultCenter } from '../../services/geo';
@@ -15,6 +15,7 @@ interface DriverLocation {
   lng: number;
   firstName?: string;
   carModel?: string;
+  status?: string;
 }
 
 function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
@@ -43,6 +44,9 @@ export default function AdminDashboard() {
   const [driverLocations, setDriverLocations] = useState<Map<string, DriverLocation>>(new Map());
   const [mapCenter] = useState<[number, number]>([getDefaultCenter().lat, getDefaultCenter().lng]);
 
+  const [driverCounts, setDriverCounts] = useState({ online: 0, busy: 0, offline: 0 });
+  const [activeRides, setActiveRides] = useState<any[]>([]);
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: () => adminApi.getDashboard(),
@@ -58,6 +62,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!locationsData?.data?.drivers) return;
     const map = new Map<string, DriverLocation>();
+    let online = 0, busy = 0, offline = 0;
     for (const d of locationsData.data.drivers) {
       if (d.currentLocation?.coordinates) {
         map.set(d._id, {
@@ -66,10 +71,15 @@ export default function AdminDashboard() {
           lng: d.currentLocation.coordinates[0],
           firstName: d.userId?.firstName,
           carModel: d.car?.model,
+          status: d.status,
         });
       }
+      if (d.status === 'online') online++;
+      else if (d.status === 'busy') busy++;
+      else offline++;
     }
     setDriverLocations(map);
+    setDriverCounts({ online, busy, offline });
   }, [locationsData]);
 
   useEffect(() => {
@@ -83,11 +93,42 @@ export default function AdminDashboard() {
           driverId: data.driverId,
           lat: data.lat,
           lng: data.lng,
+          status: data.status || next.get(data.driverId)?.status,
         });
         return next;
       });
     });
-    return () => { unsub(); };
+
+    const unsubAdmin = subscribeToAdminUpdates((msg: any) => {
+      // admin:driver:update
+      if (msg.driverId && msg.status) {
+        setDriverCounts((prev) => {
+          if (msg.status === 'online') return { ...prev, online: prev.online + 1, offline: Math.max(0, prev.offline - 1) };
+          if (msg.status === 'offline') return { ...prev, offline: prev.offline + 1, online: Math.max(0, prev.online - 1) };
+          if (msg.status === 'busy') return { ...prev, busy: prev.busy + 1, online: Math.max(0, prev.online - 1) };
+          if (msg.status === 'free') return { ...prev, online: prev.online + 1, busy: Math.max(0, prev.busy - 1) };
+          return prev;
+        });
+      }
+      // admin:ride:update
+      if (msg.rideId && msg.status) {
+        setActiveRides((prev) => {
+          const idx = prev.findIndex((r) => r.rideId === msg.rideId);
+          if (msg.status === 'completed' || msg.status === 'cancelled') {
+            return idx >= 0 ? prev.filter((_, i) => i !== idx) : prev;
+          }
+          const entry = { rideId: msg.rideId, orderNumber: msg.orderNumber, status: msg.status };
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = entry;
+            return next;
+          }
+          return [entry, ...prev];
+        });
+      }
+    });
+
+    return () => { unsub(); unsubAdmin(); };
   }, [token]);
 
   const s = data?.data?.stats;
@@ -140,6 +181,57 @@ export default function AdminDashboard() {
         <StatCard icon="🟢" label={t('online_now')} value={s?.onlineDrivers || 0} color="border-emerald-500" />
         <StatCard icon="📦" label={t('active_orders')} value={s?.activeOrders || 0} color="border-yellow-500" />
       </div>
+
+      {/* Live Driver Status Counts */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="glass rounded-card p-3 border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-lg sm:text-2xl font-bold text-green-400">{driverCounts.online}</div>
+              <div className="text-[10px] sm:text-xs text-gray-400">{t('online_drivers')}</div>
+            </div>
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+          </div>
+        </div>
+        <div className="glass rounded-card p-3 border-l-4 border-yellow-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-lg sm:text-2xl font-bold text-yellow-400">{driverCounts.busy}</div>
+              <div className="text-[10px] sm:text-xs text-gray-400">{t('busy_drivers')}</div>
+            </div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse" />
+          </div>
+        </div>
+        <div className="glass rounded-card p-3 border-l-4 border-gray-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-lg sm:text-2xl font-bold text-gray-400">{driverCounts.offline}</div>
+              <div className="text-[10px] sm:text-xs text-gray-400">{t('offline_drivers')}</div>
+            </div>
+            <div className="w-3 h-3 rounded-full bg-gray-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* Active Rides List */}
+      {activeRides.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-card p-4">
+          <h3 className="font-semibold mb-3 text-sm">{t('active_rides')} ({activeRides.length})</h3>
+          <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin">
+            {activeRides.map((r: any) => (
+              <div key={r.rideId} className="flex items-center justify-between text-xs py-2 border-b border-white/5 last:border-0">
+                <span className="text-gray-400 font-mono truncate max-w-[80px]">#{r.orderNumber}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                  r.status === 'accepted' ? 'bg-green-500/10 text-green-400' :
+                  r.status === 'in_progress' ? 'bg-blue-500/10 text-blue-400' :
+                  r.status === 'arrived' ? 'bg-yellow-500/10 text-yellow-400' :
+                  'bg-gray-500/10 text-gray-400'
+                }`}>{r.status}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <StatCard icon="💰" label={t('today_income')} value={`${(s?.revenueToday || 0).toLocaleString()}`} color="border-purple-500" />
